@@ -9,6 +9,9 @@ dist/
 build/
 release/
 out/
+icons/
+resources/*.iconset/
+*.icns
 
 # IDE
 .vscode/

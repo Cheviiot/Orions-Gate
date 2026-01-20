@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: apps/desktop/package-lock.json
+          cache-dependency-path: package-lock.json
       
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
@@ -39,24 +39,19 @@ jobs:
       
       - name: Install project dependencies
         run: |
-          cd apps/desktop
           npm ci
       
       - name: Generate icons
-        run: |
-          cd apps/desktop
-          npm run generate-icons
+        run: npm run generate-icons
       
       - name: Build and package
-        run: |
-          cd apps/desktop
-          ${{ matrix.build-cmd }}
+        run: ${{ matrix.build-cmd }}
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-artifacts
-          path: apps/desktop/release/**/*
+          path: release/**/*
           retention-days: 90
 
   build-altlinux:
@@ -84,30 +79,22 @@ jobs:
           apt-get install -y nodejs
       
       - name: Install project dependencies
-        run: |
-          cd apps/desktop
-          npm ci
+        run: npm ci
       
       - name: Generate icons
-        run: |
-          cd apps/desktop
-          npm run generate-icons
+        run: npm run generate-icons
       
       - name: Build application
-        run: |
-          cd apps/desktop
-          npm run build
+        run: npm run build
       
       - name: Package RPM
-        run: |
-          cd apps/desktop
-          npx electron-builder --linux rpm --config electron-builder.yml
+        run: npx electron-builder --linux rpm --config electron-builder.yml
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: altlinux-rpm-artifacts
-          path: apps/desktop/release/**/*
+          path: release/**/*
           retention-days: 90
 
   create-release:
