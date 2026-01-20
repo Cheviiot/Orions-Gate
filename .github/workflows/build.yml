@@ -253,28 +253,33 @@ jobs:
         run: |
           apt-get install -y nodejs npm
 
+      - name: Create build user
+        run: |
+          useradd -m builder
+          chown -R builder:builder /github/workspace
+
       - name: Install project dependencies
-        run: npm install
+        run: sudo -u builder npm install
 
       - name: Generate icons
-        run: npm run generate-icons
+        run: sudo -u builder npm run generate-icons
 
       - name: Build application
-        run: npm run build
+        run: sudo -u builder npm run build
 
       - name: Setup RPM build environment
         run: |
-          mkdir -p ~/.rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          echo "%_topdir $HOME/.rpmbuild" > ~/.rpmmacros
+          sudo -u builder mkdir -p /home/builder/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          echo "%_topdir /home/builder/rpmbuild" | sudo -u builder tee /home/builder/.rpmmacros
 
       - name: Prepare source package
         run: |
           FULL_VERSION=$(node -p "require('./package.json').version")
           PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
           PKG_NAME="orions-gate"
-          tar czf ~/.rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
+          sudo -u builder tar czf /home/builder/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
             --exclude=node_modules --exclude=.git --exclude=release \
-            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," .
+            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," -C /github/workspace .
 
       - name: Create SPEC file
         run: |
@@ -291,7 +296,7 @@ jobs:
             PKG_RELEASE="alt0.$(echo "$PKG_PRERELEASE" | tr -d '.-')"
           fi
           
-          cat > ~/.rpmbuild/SPECS/orions-gate.spec <<EOF
+          cat > /home/builder/rpmbuild/SPECS/orions-gate.spec <<EOF
           Name:           orions-gate
           Version:        ${PKG_VERSION}
           Release:        ${PKG_RELEASE}
@@ -345,17 +350,18 @@ jobs:
           * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-${PKG_RELEASE}
           - Automated build (version: ${FULL_VERSION})
           EOF
+          sudo chown builder:builder /home/builder/rpmbuild/SPECS/orions-gate.spec
 
       - name: Build RPM
         run: |
-          rpmbuild -ba ~/rpmbuild/SPECS/orions-gate.spec
+          sudo -u builder rpmbuild -ba /home/builder/rpmbuild/SPECS/orions-gate.spec
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: altlinux-rpm-artifacts
           path: |
-            ~/rpmbuild/RPMS/**/*.rpm
-            ~/rpmbuild/SRPMS/*.src.rpm
+            /home/builder/rpmbuild/RPMS/**/*.rpm
+            /home/builder/rpmbuild/SRPMS/*.src.rpm
           retention-days: 30
 
