@@ -2,7 +2,7 @@ console.log('[main] === STARTING MAIN PROCESS ===');
 console.log('[main] Node:', process.version, 'Platform:', process.platform);
 
 import path from 'node:path';
-import { app, BrowserWindow, ipcMain, shell, net, session, Menu, webContents } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, net, session, Menu, webContents, screen } from 'electron';
 import { ElectronBlocker, fullLists } from '@ghostery/adblocker-electron';
 import fetch from 'cross-fetch';
 import { applyUserAgent, applyWindowSettings, getSettings, initializeSettings, setSettings } from './settings';
@@ -143,12 +143,19 @@ const setupAdblocker = async (cfg: AdblockConfig) => {
 
 const createMainWindow = () => {
   console.log('[main] Creating main window...');
+  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+  const windowWidth = 1280;
+  const windowHeight = 720;
+  const x = Math.round((screenWidth - windowWidth) / 2);
+  const y = Math.round((screenHeight - windowHeight) / 2);
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    width: windowWidth,
+    height: windowHeight,
+    x: x,
+    y: y,
     minWidth: 960,
     minHeight: 600,
-    center: true,
     title: "Orion's Gate",
     backgroundColor: '#0f0f0f',
     autoHideMenuBar: true,
