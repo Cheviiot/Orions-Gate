@@ -46,10 +46,10 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[2147483100] flex items-start justify-center pt-24" onClick={handleBackdropClick}>
-      <div className="absolute inset-0" style={{ background: 'var(--overlay-backdrop)', backdropFilter: 'blur(6px)' }} />
+    <div className="pointer-events-auto fixed inset-0 z-[2147483100] flex items-start justify-center pt-24" onClick={handleBackdropClick}>
+      <div className="pointer-events-none absolute inset-0" style={{ background: 'var(--overlay-backdrop)', backdropFilter: 'blur(6px)' }} />
       <div
-        className="pointer-events-auto w-full max-w-2xl rounded-2xl border p-6 shadow-2xl animate-in slide-in-from-top-4 duration-200"
+        className="pointer-events-auto relative w-full max-w-2xl rounded-2xl border p-6 shadow-2xl animate-in slide-in-from-top-4 duration-200"
         style={{
           background: 'var(--yt-surface)',
           borderColor: 'var(--yt-border)',
