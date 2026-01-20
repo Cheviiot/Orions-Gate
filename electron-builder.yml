@@ -37,3 +37,12 @@ linux:
     Keywords: youtube;video;privacy;streaming
     Categories: Utility;Network;
   executableName: Orions-Gate
+
+rpm:
+  artifactName: "${productName}-${version}.${arch}.rpm"
+
+deb:
+  artifactName: "${productName}-${version}.${arch}.deb"
+
+appImage:
+  artifactName: "${productName}-${version}.${arch}.AppImage"
