@@ -46,10 +46,10 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
   };
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[2147483100] flex items-start justify-center pt-24" onClick={handleBackdropClick}>
+    <div className="pointer-events-auto fixed inset-0 z-[2147483100] flex items-center justify-center" onClick={handleBackdropClick}>
       <div className="pointer-events-none absolute inset-0" style={{ background: 'var(--overlay-backdrop)', backdropFilter: 'blur(6px)' }} />
       <div
-        className="pointer-events-auto relative w-full max-w-2xl rounded-2xl border p-6 shadow-2xl animate-in slide-in-from-top-4 duration-200"
+        className="pointer-events-auto relative w-full max-w-2xl rounded-2xl border p-6 shadow-2xl animate-in zoom-in-95 duration-200"
         style={{
           background: 'var(--yt-surface)',
           borderColor: 'var(--yt-border)',
@@ -58,7 +58,9 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'var(--yt-surface-2)', border: '2px solid var(--yt-border)' }}>
-          <Search className="h-6 w-6 text-[var(--yt-text-secondary)]" />
+          <div className="flex items-center justify-center">
+            <Search className="h-6 w-6 text-[var(--yt-text-secondary)]" />
+          </div>
           <input
             ref={inputRef}
             type="text"
@@ -75,7 +77,7 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-2 transition-colors"
+            className="flex items-center justify-center rounded-full p-2 transition-colors"
             style={{
               background: 'var(--yt-surface-3)',
               color: 'var(--yt-text-secondary)'
