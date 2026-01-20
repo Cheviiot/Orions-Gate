@@ -143,35 +143,16 @@ const setupAdblocker = async (cfg: AdblockConfig) => {
 
 const createMainWindow = () => {
   console.log('[main] Creating main window...');
-  
-  const windowWidth = 1280;
-  const windowHeight = 720;
-  
-  let x: number | undefined;
-  let y: number | undefined;
-  
-  try {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { x: screenX, y: screenY, width: screenWidth, height: screenHeight } = primaryDisplay.bounds;
-    
-    x = Math.round(screenX + (screenWidth - windowWidth) / 2);
-    y = Math.round(screenY + (screenHeight - windowHeight) / 2);
-    
-    console.log(`[main] Centering window at: x=${x}, y=${y} on screen ${screenWidth}x${screenHeight}`);
-  } catch (err) {
-    console.warn('[main] Failed to center window, using default position:', err);
-  }
 
   const win = new BrowserWindow({
-    width: windowWidth,
-    height: windowHeight,
-    x: x,
-    y: y,
+    width: 1280,
+    height: 720,
     minWidth: 960,
     minHeight: 600,
     title: "Orion's Gate",
     backgroundColor: '#0f0f0f',
     autoHideMenuBar: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -199,6 +180,17 @@ const createMainWindow = () => {
     console.log('[main] Loading file:', htmlPath);
     win.loadFile(htmlPath);
   }
+
+  // Center window and show it after content loads
+  win.once('ready-to-show', () => {
+    try {
+      win.center();
+      console.log('[main] Window centered and shown');
+    } catch (err) {
+      console.warn('[main] Failed to center window:', err);
+    }
+    win.show();
+  });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
