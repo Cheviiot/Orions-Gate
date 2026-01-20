@@ -67,7 +67,7 @@ jobs:
             rpm-build rpmdevtools rpmlint \
             gcc-c++ make python3 \
             libX11-devel libXext-devel libxkbfile-devel \
-            ImageMagick git findutils
+            ImageMagick git findutils libcrypt-devel
 
       - name: Install project dependencies
         run: npm install
