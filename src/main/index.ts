@@ -143,11 +143,24 @@ const setupAdblocker = async (cfg: AdblockConfig) => {
 
 const createMainWindow = () => {
   console.log('[main] Creating main window...');
-  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+  
   const windowWidth = 1280;
   const windowHeight = 720;
-  const x = Math.round((screenWidth - windowWidth) / 2);
-  const y = Math.round((screenHeight - windowHeight) / 2);
+  
+  let x: number | undefined;
+  let y: number | undefined;
+  
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { x: screenX, y: screenY, width: screenWidth, height: screenHeight } = primaryDisplay.bounds;
+    
+    x = Math.round(screenX + (screenWidth - windowWidth) / 2);
+    y = Math.round(screenY + (screenHeight - windowHeight) / 2);
+    
+    console.log(`[main] Centering window at: x=${x}, y=${y} on screen ${screenWidth}x${screenHeight}`);
+  } catch (err) {
+    console.warn('[main] Failed to center window, using default position:', err);
+  }
 
   const win = new BrowserWindow({
     width: windowWidth,
