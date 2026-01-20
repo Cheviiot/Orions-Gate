@@ -2,6 +2,7 @@ appId: com.orionsgate.app
 productName: Orion's Gate
 publish: []
 detectUpdateChannel: false
+generateUpdatesFilesForAllChannels: false
 files:
   - dist/**/*
   - assets/vot/**/*
