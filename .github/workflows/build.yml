@@ -256,7 +256,7 @@ jobs:
       - name: Create build user
         run: |
           useradd -m builder
-          chown -R builder:builder /github/workspace
+          chown -R builder:builder $PWD
 
       - name: Install project dependencies
         run: sudo -u builder npm install
@@ -279,7 +279,7 @@ jobs:
           PKG_NAME="orions-gate"
           sudo -u builder tar czf /home/builder/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
             --exclude=node_modules --exclude=.git --exclude=release \
-            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," -C /github/workspace .
+            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," -C $PWD .
 
       - name: Create SPEC file
         run: |
