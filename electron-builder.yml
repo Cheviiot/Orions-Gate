@@ -1,6 +1,7 @@
 appId: com.orionsgate.app
 productName: Orion's Gate
 publish: []
+detectUpdateChannel: false
 files:
   - dist/**/*
 directories:
