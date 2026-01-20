@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: package.json
 
       - name: Install system dependencies
         run: |
@@ -30,7 +30,7 @@ jobs:
 
       - name: Install project dependencies
         run: |
-          npm ci
+          npm install
           npm run playwright:install
 
       - name: Generate icons
@@ -62,11 +62,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: package.json
 
       - name: Install project dependencies
         run: |
-          npm ci
+          npm install
           npm run playwright:install
 
       - name: Generate icons
@@ -89,7 +89,7 @@ jobs:
     name: Alt Linux (RPM)
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/altlinux/base:p11
+      image: docker.io/alt:p11
     steps:
       - uses: actions/checkout@v4
 
@@ -113,11 +113,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: package.json
 
       - name: Install project dependencies
         run: |
-          npm ci
+          npm install
           npm run playwright:install || true
 
       - name: Generate icons
