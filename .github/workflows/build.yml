@@ -90,12 +90,17 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: docker.io/alt:sisyphus
+      options: --user root
     steps:
+      - name: Install compatibility libraries
+        run: |
+          apt-get update
+          apt-get install -y glibc glibc-pthread glibc-core
+
       - uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
-          apt-get update
           apt-get install -y \
             curl ca-certificates git \
             rpm-build hasher gear rpmlint \
@@ -103,10 +108,9 @@ jobs:
             libX11-devel libXext-devel libxkbfile-devel \
             ImageMagick
 
-      - name: Install Node.js from NodeSource
+      - name: Install Node.js from Alt Linux repo
         run: |
-          curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
+          apt-get install -y nodejs npm
 
       - name: Install project dependencies
         run: npm install
