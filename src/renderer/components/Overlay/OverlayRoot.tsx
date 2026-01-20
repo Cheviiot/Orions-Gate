@@ -65,6 +65,7 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
 
   const handleSearchSubmit = async (query: string) => {
     await window.orion.navigation.search(query);
+    closeSearch();
   };
 
   const focusFab = () => {

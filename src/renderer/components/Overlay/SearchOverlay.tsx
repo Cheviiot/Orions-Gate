@@ -37,7 +37,6 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
     e.preventDefault();
     if (query.trim()) {
       onSearch(query.trim());
-      onClose();
     }
   };
 
