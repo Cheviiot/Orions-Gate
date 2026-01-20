@@ -163,10 +163,10 @@ BrowserWindow
 MIT License — см. LICENSE.
 
 ## Благодарности
-- VOT (Voice Over Translation) — [ilyhalight](https://github.com/ilyhalight/voice-over-translation)
-- Demergi — обход DPI
-- Ghostery Adblocker — Ghostery
-- Electron, React, Vite, TypeScript
+- [VOT (Voice Over Translation)](https://github.com/ilyhalight/voice-over-translation) — автор ilyhalight
+- [Demergi](https://github.com/ValdikSS/demergi) — обход DPI
+- [Ghostery Adblocker](https://www.ghostery.com/) — автор Ghostery
+- [Electron](https://www.electronjs.org/), [React](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/)
 
 ## Поддержка
 Вопросы и предложения — через issues на GitHub.
