@@ -50,6 +50,7 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
   };
 
   const handleSearch = () => {
+    closePanel();
     openSearch();
   };
 

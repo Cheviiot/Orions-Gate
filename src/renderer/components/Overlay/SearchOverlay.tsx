@@ -13,7 +13,12 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
+    // Delay focus to ensure SearchOverlay is fully rendered
+    const timer = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -22,7 +27,10 @@ const SearchOverlay = ({ onClose, onSearch }: Props) => {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      cancelAnimationFrame(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose]);
 
   const handleSubmit = (e: React.FormEvent) => {
