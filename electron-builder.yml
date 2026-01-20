@@ -4,6 +4,7 @@ publish: []
 detectUpdateChannel: false
 files:
   - dist/**/*
+  - assets/vot/**/*
 directories:
   output: release
 extraResources:
