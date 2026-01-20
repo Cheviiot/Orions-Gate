@@ -1,0 +1,155 @@
+name: desktop-build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  linux:
+    name: Linux (deb + AppImage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: apps/desktop/package-lock.json
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxext-dev libxkbfile-dev \
+            libappindicator3-dev fonts-liberation \
+            xdg-utils imagemagick
+      
+      - name: Install project dependencies
+        run: |
+          cd apps/desktop
+          npm ci
+          npm run playwright:install
+      
+      - name: Generate icons
+        run: |
+          cd apps/desktop
+          npm run generate-icons
+      
+      - name: Build application
+        run: |
+          cd apps/desktop
+          npm run build
+      
+      - name: Package (deb + AppImage)
+        run: |
+          cd apps/desktop
+          npx electron-builder --linux deb AppImage --config electron-builder.yml
+      
+      - name: Run smoke tests
+        run: |
+          cd apps/desktop
+          npm run test:smoke
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: apps/desktop/release/**/*
+          retention-days: 30
+
+  windows:
+    name: Windows (nsis + msi)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: apps/desktop/package-lock.json
+      
+      - name: Install project dependencies
+        run: |
+          cd apps/desktop
+          npm ci
+      
+      - name: Generate icons
+        run: |
+          cd apps/desktop
+          npm run generate-icons
+      
+      - name: Build application
+        run: |
+          cd apps/desktop
+          npm run build
+      
+      - name: Package (nsis + msi)
+        run: |
+          cd apps/desktop
+          npx electron-builder --win nsis msi --config electron-builder.yml
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: apps/desktop/release/**/*
+          retention-days: 30
+
+  altlinux:
+    name: Alt Linux (rpm)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/altlinux/base:p11
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            curl ca-certificates openssl git \
+            python3 make gcc g++ \
+            libx11-dev libxext-dev libxkbfile-dev \
+            libappindicator3-dev fonts-liberation \
+            xdg-utils imagemagick \
+            rpm-build fakeroot rpmdevtools
+      
+      - name: Install Node.js 20
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          node --version
+          npm --version
+      
+      - name: Install project dependencies
+        run: |
+          cd apps/desktop
+          npm ci
+          npm run playwright:install || true
+      
+      - name: Generate icons
+        run: |
+          cd apps/desktop
+          npm run generate-icons
+      
+      - name: Build application
+        run: |
+          cd apps/desktop
+          npm run build
+      
+      - name: Package RPM
+        run: |
+          cd apps/desktop
+          npx electron-builder --linux rpm --config electron-builder.yml
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: altlinux-rpm-artifacts
+          path: apps/desktop/release/**/*
+          retention-days: 30

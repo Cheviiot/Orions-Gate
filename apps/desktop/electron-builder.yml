@@ -1,0 +1,43 @@
+appId: com.orionsgate.app
+productName: Orion's Gate
+files:
+  - dist/**/*
+directories:
+  output: release
+extraResources:
+  - from: resources
+    to: resources
+  - from: assets/vot
+    to: assets/vot
+asarUnpack:
+  - "**/*.node"
+  - "**/assets/vot/**"
+artifactName: "Orions-Gate-${version}-${os}-${arch}.${ext}"
+mac:
+  target: dmg
+  icon: resources/icon.icns
+win:
+  target:
+    - nsis
+  icon: resources/icon.ico
+linux:
+  icon:
+    - resources/icon_512x512.png
+    - resources/icon_256x256.png
+    - resources/icon_128x128.png
+    - resources/icon_96x96.png
+    - resources/icon_64x64.png
+    - resources/icon_48x48.png
+    - resources/icon_32x32.png
+    - resources/icon_16x16.png
+  category: Utility
+  target:
+    - deb
+    - rpm
+    - AppImage
+  desktop:
+    Name: Orion's Gate
+    Comment: Modern YouTube client with DPI bypass and privacy features
+    Keywords: youtube;video;privacy;streaming
+    Categories: Utility;Network;
+  executableName: Orions-Gate

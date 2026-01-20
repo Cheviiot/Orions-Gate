@@ -1,0 +1,135 @@
+name: desktop-release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-all:
+    name: Build all platforms
+    strategy:
+      matrix:
+        include:
+          - name: Linux (DEB + AppImage)
+            runs-on: ubuntu-latest
+            build-cmd: "npm run build && npx electron-builder --linux deb AppImage --config electron-builder.yml"
+          - name: Windows (NSIS + MSI)
+            runs-on: windows-latest
+            build-cmd: "npm run build && npx electron-builder --win nsis msi --config electron-builder.yml"
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: apps/desktop/package-lock.json
+      
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libx11-dev libxext-dev libxkbfile-dev \
+            libappindicator3-dev fonts-liberation \
+            xdg-utils imagemagick
+      
+      - name: Install project dependencies
+        run: |
+          cd apps/desktop
+          npm ci
+      
+      - name: Generate icons
+        run: |
+          cd apps/desktop
+          npm run generate-icons
+      
+      - name: Build and package
+        run: |
+          cd apps/desktop
+          ${{ matrix.build-cmd }}
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-artifacts
+          path: apps/desktop/release/**/*
+          retention-days: 90
+
+  build-altlinux:
+    name: Alt Linux (RPM)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/altlinux/base:p11
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y \
+            curl ca-certificates openssl git \
+            python3 make gcc g++ \
+            libx11-dev libxext-dev libxkbfile-dev \
+            libappindicator3-dev fonts-liberation \
+            xdg-utils imagemagick \
+            rpm-build fakeroot rpmdevtools
+      
+      - name: Install Node.js 20
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+      
+      - name: Install project dependencies
+        run: |
+          cd apps/desktop
+          npm ci
+      
+      - name: Generate icons
+        run: |
+          cd apps/desktop
+          npm run generate-icons
+      
+      - name: Build application
+        run: |
+          cd apps/desktop
+          npm run build
+      
+      - name: Package RPM
+        run: |
+          cd apps/desktop
+          npx electron-builder --linux rpm --config electron-builder.yml
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: altlinux-rpm-artifacts
+          path: apps/desktop/release/**/*
+          retention-days: 90
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-all, build-altlinux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

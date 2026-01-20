@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   DESIGN TOKENS (CSS VARIABLES)
+   ============================================================================ */
+
+:root {
+  color-scheme: dark;
+  
+  /* Color Palette (YouTube Dark) */
+  --yt-bg: #0f0f0f;
+  --yt-surface: #181818;
+  --yt-surface-2: #202020;
+  --yt-surface-3: #272727;
+  --yt-border: rgba(255, 255, 255, 0.08);
+  --yt-text: rgba(255, 255, 255, 0.9);
+  --yt-text-secondary: rgba(255, 255, 255, 0.6);
+  --yt-text-disabled: rgba(255, 255, 255, 0.4);
+  --yt-accent: #3ea6ff;
+  --yt-hover: rgba(255, 255, 255, 0.1);
+  
+  /* Scrollbar colors */
+  --yt-scrollbar-thumb: rgba(255, 255, 255, 0.22);
+  --yt-scrollbar-thumb-hover: rgba(255, 255, 255, 0.35);
+  
+  /* Spacing Tokens */
+  --ui-spacing-xs: 2px;
+  --ui-spacing-sm: 4px;
+  --ui-spacing-md: 8px;
+  --ui-spacing-lg: 12px;
+  --ui-spacing-xl: 16px;
+  --ui-spacing-2xl: 24px;
+  
+  /* Radius Tokens */
+  --yt-radius: 12px;
+  --yt-radius-sm: 8px;
+  --ui-radius-button: 12px;
+  --ui-radius-panel: 16px;
+  
+  /* Shadow Tokens */
+  --yt-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
+  --ui-shadow-fab: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --ui-shadow-fab-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --ui-shadow-fab-active: 0 2px 8px rgba(0, 0, 0, 0.25);
+  
+  /* Animation Tokens */
+  --ui-easing-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ui-easing-out: cubic-bezier(0, 0, 0.2, 1);
+  --ui-easing-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ui-duration-fast: 80ms;
+  --ui-duration-base: 150ms;
+  --ui-duration-slow: 200ms;
+  
+  /* Z-Index Stack */
+  --ui-z-backdrop: 2147482999;
+  --ui-z-overlay: 2147483000;
+  --ui-z-search: 2147483100;
+  
+  /* Scale & Layout */
+  --overlay-scale: 1;
+  --overlay-backdrop: rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================================
+   LIGHT THEME (Auto-detection via prefers-color-scheme)
+   ============================================================================ */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --yt-bg: #ffffff;
+    --yt-surface: #f9f9f9;
+    --yt-surface-2: #f1f1f1;
+    --yt-surface-3: #e9e9e9;
+    --yt-border: rgba(0, 0, 0, 0.08);
+    --yt-text: rgba(0, 0, 0, 0.9);
+    --yt-text-secondary: rgba(0, 0, 0, 0.6);
+    --yt-text-disabled: rgba(0, 0, 0, 0.4);
+    --yt-hover: rgba(0, 0, 0, 0.08);
+    
+    /* Scrollbar colors for light */
+    --yt-scrollbar-thumb: rgba(0, 0, 0, 0.25);
+    --yt-scrollbar-thumb-hover: rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Rounded, YouTube-like scrollbar styling */
+.ui-scrollbar {
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--yt-scrollbar-thumb) transparent; /* Firefox */
+}
+.ui-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+.ui-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ui-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--yt-scrollbar-thumb);
+  border-radius: 9999px; /* pill */
+  border: 3px solid transparent; /* create inset gap */
+  background-clip: padding-box;
+}
+.ui-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--yt-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--yt-bg);
+  color: var(--yt-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#root,
+html {
+  min-height: 100vh;
+}
+
+html {
+  font-size: calc(16px * var(--overlay-scale));
+}
+
+/* ============================================================================
+   BUTTON BASE STYLES
+   ============================================================================ */
+
+button {
+  min-width: 44px;
+  min-height: 44px;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+
+button:disabled {
+  opacity: var(--ui-opacity-disabled, 0.4);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Focus Visible Ring (YouTube-style) */
+button:focus-visible {
+  outline: 2px solid var(--yt-accent);
+  outline-offset: 2px;
+}
+
+/* ============================================================================
+   ANIMATION KEYFRAMES
+   ============================================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+
+#root {
+  min-height: 100vh;
+}

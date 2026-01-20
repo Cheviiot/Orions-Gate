@@ -1,0 +1,163 @@
+{
+  "app": {
+    "title": "Orion's Gate",
+    "platform": "Platform",
+    "ping": "Ping",
+    "webview": "Webview",
+    "nav": {
+      "home": "Home",
+      "settings": "Settings",
+      "diagnostics": "Diagnostics"
+    }
+  },
+  "overlay": {
+    "actions": {
+      "home": "Home",
+      "back": "Back",
+      "forward": "Forward",
+      "search": "Search",
+      "settings": "Settings",
+      "refresh": "Refresh"
+    },
+    "search": {
+      "placeholder": "Search YouTube",
+      "hint": "Enter to search, Esc to close"
+    },
+    "settings": {
+      "title": "Settings",
+      "language": "Language",
+      "theme": "Theme",
+      "scale": "UI scale",
+      "hint": "Configure language and interface",
+      "window": {
+        "title": "Window",
+        "description": "Width, state, always-on-top",
+        "width": "Width",
+        "widthCustom": "Custom",
+        "startState": "Start state",
+        "startStateOptions": {
+          "last": "Last",
+          "maximized": "Maximized",
+          "normal": "Normal"
+        },
+        "alwaysOnTop": "Always on top",
+        "resizable": "Resizable",
+        "minWidth": "Min width",
+        "minHeight": "Min height"
+      },
+      "userAgent": {
+        "title": "User-Agent",
+        "description": "Default recommended; custom requires reload",
+        "mode": "Mode",
+        "modeOptions": {
+          "default": "Default (recommended)",
+          "chromeDesktop": "Chrome Desktop",
+          "chromeAndroid": "Chrome Android",
+          "custom": "Custom"
+        },
+        "customPlaceholder": "Enter custom UA",
+        "reloadOnChange": "Reload after UA change"
+      },
+      "dpi": {
+        "title": "DPI bypass",
+        "description": "Built-in Demergi proxy for DPI evasion (app + webview only)",
+        "mode": "Mode",
+        "modeOptions": {
+          "off": "Off",
+          "demergi": "Demergi (built-in)"
+        },
+        "host": "Proxy host",
+        "port": "Proxy port",
+        "bypass": "Bypass list",
+        "args": "Extra args (Demergi)",
+        "autoStart": "Auto-start bundled Demergi",
+        "hint": "Semicolon-separated; skip hosts you do not want to proxy"
+      },
+      "interface": {
+        "title": "Interface",
+        "description": "Theme, scale, backdrops, hotkeys",
+        "language": "Language",
+        "languageOptions": {
+          "en": "English",
+          "ru": "Русский"
+        },
+        "theme": "Theme",
+        "themeOptions": {
+          "ytDark": "YouTube Dark",
+          "ytLight": "YouTube Light",
+          "auto": "Auto (system)"
+        },
+        "scale": "Scale",
+        "scalePercent": "{percent}%",
+        "backdropOpacity": "Backdrop opacity",
+        "animations": "Animations",
+        "hotkeys": "Hotkeys (Alt+←/→, Ctrl+K, Ctrl+,)",
+        "autoCloseOnNav": "Auto-close panel on navigation",
+        "closeOnEsc": "Close on Esc",
+        "closeOnOutside": "Close on click outside",
+        "iconSet": "Icon set",
+        "iconSetLucide": "Lucide (default)",
+        "iconSetMaterial": "Material Symbols"
+      },
+      "userscripts": {
+        "title": "Orion Userscripts",
+        "description": "Manage custom userscripts for websites",
+        "openManager": "Open Userscripts Manager",
+        "note": "You can also access this via Tools → Orion Userscripts…"
+      },
+      "fab": {
+        "title": "Action Buttons",
+        "description": "Position, size, order, behavior",
+        "position": "Position",
+        "positionOptions": {
+          "rightBottom": "Right bottom",
+          "leftBottom": "Left bottom"
+        },
+        "padding": "Padding",
+        "size": "Size",
+        "sizeOptions": {
+          "s": "S",
+          "m": "M",
+          "l": "L"
+        },
+        "opacity": "Opacity",
+        "opacityPercent": "{percent}%",
+        "style": "Style",
+        "styleOptions": {
+          "circle": "Round",
+          "rounded": "Rounded square"
+        },
+        "hoverOpen": "Open panel on hover",
+        "closeOnVideoClick": "Close panel when clicking video",
+        "tooltips": "Tooltips",
+        "buttonOrder": "Buttons order"
+      }
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "hint": "Hover to inspect.",
+      "size": "{w}×{h} @ {x},{y}",
+      "z": "z-index: {value}"
+    }
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "import": "Import",
+    "export": "Export",
+    "install": "Install",
+    "uninstall": "Uninstall",
+    "enable": "Enable",
+    "disable": "Disable",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "url": "URL",
+    "name": "Name",
+    "version": "Version"
+  }
+}

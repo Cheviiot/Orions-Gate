@@ -1,0 +1,164 @@
+{
+  "app": {
+    "title": "Orion's Gate",
+    "platform": "Платформа",
+    "ping": "Пинг",
+    "webview": "Webview",
+    "nav": {
+      "home": "Главная",
+      "settings": "Настройки",
+      "diagnostics": "Диагностика"
+    }
+  },
+  "overlay": {
+    "actions": {
+      "home": "Главная",
+      "back": "Назад",
+      "forward": "Вперёд",
+      "search": "Поиск",
+      "settings": "Настройки",
+      "refresh": "Обновить"
+    },
+    "search": {
+      "placeholder": "Поиск на YouTube",
+      "hint": "Enter для поиска, Esc для закрытия"
+    },
+    "settings": {
+      "title": "Настройки",
+      "language": "Язык",
+      "theme": "Тема",
+      "scale": "Масштаб UI",
+      "hint": "Настройте язык и интерфейс",
+      "window": {
+        "title": "Окно",
+        "description": "Ширина, состояние, поверх всех",
+        "width": "Ширина",
+        "widthCustom": "Пользовательская",
+        "startState": "Начальное состояние",
+        "startStateOptions": {
+          "last": "Последнее",
+          "maximized": "Развёрнуто",
+          "normal": "Обычное"
+        },
+        "alwaysOnTop": "Поверх всех окон",
+        "resizable": "Изменяемое",
+        "minWidth": "Мин. ширина",
+        "minHeight": "Мин. высота"
+      },
+      "userAgent": {
+        "title": "User-Agent",
+        "description": "По умолчанию рекомендуется; пользовательский требует перезагрузку",
+        "mode": "Режим",
+        "modeOptions": {
+          "default": "По умолчанию (рекомендуется)",
+          "chromeDesktop": "Chrome (ПК)",
+          "chromeAndroid": "Chrome (Android)",
+          "custom": "Пользовательский"
+        },
+        "customPlaceholder": "Введите пользовательский UA",
+        "reloadOnChange": "Перезагружать при изменении UA"
+      },
+      "dpi": {
+        "title": "Обход DPI",
+        "description": "Встроенный Demergi прокси для обхода DPI (только приложение и webview)",
+        "mode": "Режим",
+        "modeOptions": {
+          "off": "Выкл",
+          "demergi": "Demergi (встроено)"
+        },
+        "host": "Хост прокси",
+        "port": "Порт прокси",
+        "bypass": "Список обхода",
+        "args": "Доп. аргументы (Demergi)",
+        "autoStart": "Автозапуск встроенного Demergi",
+        "hint": "Разделитель ; для доменов, которые не нужно проксировать"
+      },
+      "interface": {
+        "title": "Интерфейс",
+        "description": "Тема, масштаб, фон, горячие клавиши",
+        "language": "Язык",
+        "languageOptions": {
+          "en": "English",
+          "ru": "Русский"
+        },
+        "theme": "Тема",
+        "themeOptions": {
+          "ytDark": "YouTube (тёмная)",
+          "ytLight": "YouTube (светлая)",
+          "auto": "Авто (система)"
+        },
+        "scale": "Масштаб",
+        "scalePercent": "{percent}%",
+        "backdropOpacity": "Прозрачность фона",
+        "animations": "Анимации",
+        "hotkeys": "Горячие клавиши (Alt+←/→, Ctrl+K, Ctrl+,)",
+        "autoCloseOnNav": "Закрывать панель при навигации",
+        "closeOnEsc": "Закрывать на Esc",
+        "closeOnOutside": "Закрывать при клике вне",
+        "iconSet": "Стиль иконок",
+        "iconSetLucide": "Lucide (по умолчанию)",
+        "iconSetMaterial": "Material Symbols"
+      },
+      "userscripts": {
+        "title": "Orion Userscripts",
+        "description": "Управление пользовательскими скриптами для сайтов",
+        "openManager": "Открыть менеджер скриптов",
+        "note": "Вы также можете открыть это через Tools → Orion Userscripts…"
+      },
+      "fab": {
+        "title": "Кнопки действий",
+        "description": "Позиция, размер, порядок, поведение",
+        "position": "Позиция",
+        "positionOptions": {
+          "rightBottom": "Справа внизу",
+          "leftBottom": "Слева внизу"
+        },
+        "padding": "Отступ",
+        "size": "Размер",
+        "sizeOptions": {
+          "s": "S",
+          "m": "M",
+          "l": "L"
+        },
+        "opacity": "Прозрачность",
+        "opacityPercent": "{percent}%",
+        "style": "Стиль",
+        "styleOptions": {
+          "circle": "Круг",
+          "rounded": "Скруглённый квадрат"
+        },
+        "hoverOpen": "Открывать при наведении",
+        "closeOnVideoClick": "Закрывать при клике на видео",
+        "tooltips": "Подсказки",
+        "buttonOrder": "Порядок кнопок"
+      }
+    },
+
+    "diagnostics": {
+      "title": "Диагностика",
+      "hint": "Наведите для информации.",
+      "size": "{w}×{h} @ {x},{y}",
+      "z": "z-index: {value}"
+    }
+  },
+  "common": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "add": "Добавить",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "import": "Импорт",
+    "export": "Экспорт",
+    "install": "Установить",
+    "uninstall": "Удалить",
+    "enable": "Включить",
+    "disable": "Отключить",
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "warning": "Предупреждение",
+    "url": "URL",
+    "name": "Название",
+    "version": "Версия"
+  }
+}
