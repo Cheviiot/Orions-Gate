@@ -2,7 +2,10 @@
   "name": "orions-gate",
   "version": "2.0.0-alpha.0",
   "private": true,
-  "author": "Orion's Gate Team",
+  "author": {
+    "name": "Orion's Gate Team",
+    "email": "team@orionsgate.dev"
+  },
   "description": "Orion's Gate — YouTube client with DPI bypass, ad blocking, and privacy features",
   "main": "dist/main.js",
   "scripts": {
