@@ -52,6 +52,134 @@ jobs:
           path: release/**/*
           retention-days: 30
 
+  linux-rpm:
+    name: Linux (RPM)
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            nodejs npm \
+            rpm-build rpmdevtools rpmlint \
+            gcc-c++ make python3 \
+            libX11-devel libXext-devel libxkbfile-devel \
+            ImageMagick git findutils
+
+      - name: Install project dependencies
+        run: npm install
+
+      - name: Generate icons
+        run: npm run generate-icons
+
+      - name: Build application
+        run: npm run build
+
+      - name: Setup RPM build environment
+        run: |
+          rpmdev-setuptree
+          echo "%_topdir $HOME/rpmbuild" > ~/.rpmmacros
+
+      - name: Prepare source package
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          PKG_NAME="orions-gate"
+          tar czf ~/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
+            --exclude=node_modules --exclude=.git --exclude=release \
+            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," .
+
+      - name: Create SPEC file
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          cat > ~/rpmbuild/SPECS/orions-gate.spec <<EOF
+          Name:           orions-gate
+          Version:        ${PKG_VERSION}
+          Release:        1%{?dist}
+          Summary:        Transparent proxy web browser with VOT integration
+          License:        MIT
+          URL:            https://github.com/Cheviiot/Orions-Gate
+          Source0:        %{name}-%{version}.tar.gz
+
+          BuildRequires:  nodejs >= 20
+          BuildRequires:  npm
+          BuildRequires:  gcc-c++
+          BuildRequires:  libX11-devel
+          BuildRequires:  libXext-devel
+          BuildRequires:  libxkbfile-devel
+          BuildRequires:  ImageMagick
+
+          Requires:       libX11
+          Requires:       libXext
+          Requires:       libxkbfile
+
+          %description
+          Orion's Gate is a transparent proxy web browser built on Electron 40,
+          designed for secure content access with integrated Voice Over Translation.
+
+          %prep
+          %setup -q
+
+          %build
+          npm ci --legacy-peer-deps || npm install
+          npm run generate-icons
+          npm run build
+          npx electron-builder --linux rpm --x64
+
+          %install
+          mkdir -p %{buildroot}/opt/%{name}
+          mkdir -p %{buildroot}%{_bindir}
+          mkdir -p %{buildroot}%{_datadir}/applications
+          mkdir -p %{buildroot}%{_datadir}/icons/hicolor/512x512/apps
+          
+          # Copy application files
+          cp -r release/linux-unpacked/* %{buildroot}/opt/%{name}/
+          
+          # Create symlink
+          ln -s /opt/%{name}/%{name} %{buildroot}%{_bindir}/%{name}
+          
+          # Create desktop entry
+          cat > %{buildroot}%{_datadir}/applications/%{name}.desktop <<DESKTOP
+          [Desktop Entry]
+          Name=Orion's Gate
+          Comment=Transparent proxy web browser
+          Exec=/opt/%{name}/%{name}
+          Type=Application
+          Icon=%{name}
+          Categories=Network;WebBrowser;
+          Terminal=false
+          DESKTOP
+
+          # Copy icon if exists
+          if [ -f resources/icon.png ]; then
+            cp resources/icon.png %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/%{name}.png
+          fi
+
+          %files
+          /opt/%{name}
+          %{_bindir}/%{name}
+          %{_datadir}/applications/%{name}.desktop
+          %{_datadir}/icons/hicolor/512x512/apps/%{name}.png
+
+          %changelog
+          * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-1
+          - Automated CI/CD build
+          EOF
+
+      - name: Build RPM
+        run: rpmbuild -ba ~/rpmbuild/SPECS/orions-gate.spec
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-rpm-artifacts
+          path: |
+            ~/rpmbuild/RPMS/**/*.rpm
+            ~/rpmbuild/SRPMS/*.src.rpm
+          retention-days: 30
+
   windows:
     name: Windows (NSIS + MSI)
     runs-on: windows-latest

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X } from '../icons';
+import { Search, X } from '../icons/index.tsx';
 
 interface Props {
   onClose: () => void;
