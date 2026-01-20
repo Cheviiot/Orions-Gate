@@ -33,16 +33,18 @@ npm run dev
 npm run build
 npm run make:win      # NSIS (Windows)
 npm run make:deb      # DEB (Debian/Ubuntu)
-npm run make:rpm      # RPM (Fedora/RHEL/Alt)
-npm run make:appimage # AppImage (universal)
+npm run make:rpm      # RPM (Fedora/RHEL)
+npm run make:alt      # RPM (Alt Linux/Sisyphus)
+npm run make:appimage # AppImage (universal Linux)
 ```
 
-Artifacts: release/
+Artifacts: `release/`
 
 ### Alt Linux Support (Wayland and X11)
 - PNG icons 16–512 px (hicolor theme)
 - High DPI and automatic icon picking
 - Works with GNOME/KDE/XFCE and others
+- Use `npm run make:alt` for local Alt Linux RPM builds
 
 ## Project Structure
 ```
@@ -75,11 +77,14 @@ Artifacts: release/
 ```
 
 ## Configuration Files
-- electron-builder.yml — packaging (includes VOT assets)
-- tsup.config.ts — main/preload build (copies assets)
-- vite.renderer.config.ts — renderer build
-- playwright.config.ts — E2E
-- package.json — scripts and dependencies
+- `electron-builder.yml` — multi-platform packaging (Windows, Linux, Alt Linux)
+  - VOT assets included in ASAR bundle
+  - Disabled auto-updates and publishing
+- `tsup.config.ts` — main/preload build, copies VOT assets
+- `vite.renderer.config.ts` — renderer build
+- `playwright.config.ts` — E2E tests
+- `package.json` — build scripts and dependencies
+- `.github/workflows/build.yml` — CI/CD matrix builds (Windows, Linux deb/AppImage, Fedora RPM, Alt Linux RPM)
 
 ## VOT Integration
 Orion's Gate includes Voice Over Translation by [ilyhalight](https://github.com/ilyhalight/voice-over-translation).
@@ -146,8 +151,19 @@ BrowserWindow
 ```
 
 ## CI/CD
-- .github/workflows/build.yml — builds: Linux (deb, AppImage), Windows (NSIS/MSI), Alt Linux (RPM)
-- .github/workflows/release.yml — releases on v* tags, uploads artifacts
+**GitHub Actions** (`.github/workflows/build.yml`)
+- **Windows**: NSIS + MSI installers
+- **Linux deb/AppImage**: Ubuntu latest (standard Linux packages)
+- **Fedora RPM**: Fedora 43 container with electron-builder and FPM
+- **Alt Linux RPM**: Alt Linux Sisyphus container with rpmbuild/gear/hasher
+  - Non-root builder user (security policy)
+  - elfutils, perl for proper RPM generation
+  - Auto-updates disabled (no GitHub token required)
+
+**Release workflow** (`.github/workflows/release.yml`)
+- Triggered on `v*` tags
+- Uploads artifacts to GitHub Releases
+- Matrix strategy for all platforms
 
 ## Known Issues
 - MaxListenersExceededWarning (ad blocker stats)
