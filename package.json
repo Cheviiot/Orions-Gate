@@ -7,6 +7,7 @@
     "email": "6terio9@vk.com"
   },
   "description": "Orion's Gate — YouTube client with DPI bypass, ad blocking, and privacy features",
+  "homepage": "https://github.com/Cheviiot/Orions-Gate",
   "main": "dist/main.js",
   "scripts": {
     "dev": "cross-env VITE_DEV_SERVER_URL=http://localhost:5173 concurrently -k \"npm:dev:renderer\" \"npm:dev:ts\" \"npm:dev:electron\"",
