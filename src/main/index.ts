@@ -148,6 +148,7 @@ const createMainWindow = () => {
     height: 720,
     minWidth: 960,
     minHeight: 600,
+    center: true,
     title: "Orion's Gate",
     backgroundColor: '#0f0f0f',
     autoHideMenuBar: true,
