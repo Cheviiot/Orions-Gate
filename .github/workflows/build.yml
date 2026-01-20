@@ -85,7 +85,8 @@ jobs:
 
       - name: Prepare source package
         run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          FULL_VERSION=$(node -p "require('./package.json').version")
+          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
           PKG_NAME="orions-gate"
           tar czf ~/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
             --exclude=node_modules --exclude=.git --exclude=release \
@@ -93,11 +94,23 @@ jobs:
 
       - name: Create SPEC file
         run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          FULL_VERSION=$(node -p "require('./package.json').version")
+          # Split version and pre-release suffix (e.g., "2.0.0-alpha.0" -> "2.0.0" and "alpha.0")
+          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
+          PKG_PRERELEASE=$(echo "$FULL_VERSION" | grep -oP '(?<=-).+' || echo "")
+          
+          # Determine release number
+          if [ -z "$PKG_PRERELEASE" ]; then
+            PKG_RELEASE="1%{?dist}"
+          else
+            # Convert pre-release format: "alpha.0" -> "0.alpha0"
+            PKG_RELEASE="0.$(echo "$PKG_PRERELEASE" | tr -d '.-')%{?dist}"
+          fi
+          
           cat > ~/rpmbuild/SPECS/orions-gate.spec <<EOF
           Name:           orions-gate
           Version:        ${PKG_VERSION}
-          Release:        1%{?dist}
+          Release:        ${PKG_RELEASE}
           Summary:        Transparent proxy web browser with VOT integration
           License:        MIT
           URL:            https://github.com/Cheviiot/Orions-Gate
@@ -164,8 +177,8 @@ jobs:
           %{_datadir}/icons/hicolor/512x512/apps/%{name}.png
 
           %changelog
-          * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-1
-          - Automated CI/CD build
+          * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-${PKG_RELEASE}
+          - Automated CI/CD build (version: ${FULL_VERSION})
           EOF
 
       - name: Build RPM
@@ -256,7 +269,8 @@ jobs:
 
       - name: Prepare source package
         run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          FULL_VERSION=$(node -p "require('./package.json').version")
+          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
           PKG_NAME="orions-gate"
           tar czf ~/.rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
             --exclude=node_modules --exclude=.git --exclude=release \
@@ -264,11 +278,23 @@ jobs:
 
       - name: Create SPEC file
         run: |
-          PKG_VERSION=$(node -p "require('./package.json').version")
+          FULL_VERSION=$(node -p "require('./package.json').version")
+          # Split version and pre-release suffix
+          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
+          PKG_PRERELEASE=$(echo "$FULL_VERSION" | grep -oP '(?<=-).+' || echo "")
+          
+          # Determine release number for Alt Linux
+          if [ -z "$PKG_PRERELEASE" ]; then
+            PKG_RELEASE="alt1"
+          else
+            # Convert pre-release format: "alpha.0" -> "alt0.alpha0"
+            PKG_RELEASE="alt0.$(echo "$PKG_PRERELEASE" | tr -d '.-')"
+          fi
+          
           cat > ~/.rpmbuild/SPECS/orions-gate.spec <<EOF
           Name:           orions-gate
           Version:        ${PKG_VERSION}
-          Release:        alt1
+          Release:        ${PKG_RELEASE}
           Summary:        Transparent proxy web browser
           License:        MIT
           Group:          Networking/WWW
@@ -316,8 +342,8 @@ jobs:
           %{_datadir}/applications/%{name}.desktop
 
           %changelog
-          * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-alt1
-          - Automated build
+          * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-${PKG_RELEASE}
+          - Automated build (version: ${FULL_VERSION})
           EOF
 
       - name: Build RPM
