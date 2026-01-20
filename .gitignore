@@ -10,6 +10,7 @@ build/
 release/
 out/
 icons/
+resources/icons/
 resources/*.iconset/
 *.icns
 
