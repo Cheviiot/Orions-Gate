@@ -1,5 +1,6 @@
 appId: com.orionsgate.app
 productName: Orion's Gate
+publish: never
 files:
   - dist/**/*
 directories:
