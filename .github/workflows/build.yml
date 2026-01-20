@@ -247,7 +247,7 @@ jobs:
             rpm-build hasher gear rpmlint \
             python3 make gcc-c++ \
             libX11-devel libXext-devel libxkbfile-devel \
-            ImageMagick sudo perl
+            ImageMagick sudo perl elfutils
 
       - name: Install Node.js from Alt Linux repo
         run: |
