@@ -10,7 +10,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, 'src/shared')
-    }
+    },
+    extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json']
   },
   optimizeDeps: {
     // Electron APIs are provided at runtime; avoid bundling for the browser build
