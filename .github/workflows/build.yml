@@ -93,12 +93,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install base build tools
+      - name: Install build tools
         run: |
           apt-get update
           apt-get install -y \
             curl ca-certificates git \
-            rpm-build rpm-build-nodejs rpmlint \
+            rpm-build hasher gear rpmlint \
             python3 make gcc-c++ \
             libX11-devel libXext-devel libxkbfile-devel \
             ImageMagick
@@ -108,18 +108,8 @@ jobs:
           curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
           apt-get install -y nodejs
 
-      - name: Setup RPM build environment
-        run: |
-          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          cat > ~/.rpmmacros <<EOF
-          %_topdir %(echo $HOME)/rpmbuild
-          %packager Orion's Gate CI <ci@orionsgate.dev>
-          EOF
-
       - name: Install project dependencies
-        run: |
-          npm install
-          npm run playwright:install || true
+        run: npm install
 
       - name: Generate icons
         run: npm run generate-icons
@@ -127,42 +117,40 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Create source tarball
+      - name: Setup RPM build environment
         run: |
-          PKG_NAME="orions-gate"
+          mkdir -p ~/.rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          echo "%_topdir $HOME/.rpmbuild" > ~/.rpmmacros
+
+      - name: Prepare source package
+        run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
-          mkdir -p ~/rpmbuild/SOURCES
-          tar czf ~/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
+          PKG_NAME="orions-gate"
+          tar czf ~/.rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
             --exclude=node_modules --exclude=.git --exclude=release \
             --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," .
 
-      - name: Create RPM SPEC file
+      - name: Create SPEC file
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
-          cat > ~/rpmbuild/SPECS/orions-gate.spec <<'EOF'
+          cat > ~/.rpmbuild/SPECS/orions-gate.spec <<EOF
           Name:           orions-gate
           Version:        ${PKG_VERSION}
           Release:        alt1
-          Summary:        Transparent proxy web browser with VOT integration
+          Summary:        Transparent proxy web browser
           License:        MIT
           Group:          Networking/WWW
           URL:            https://github.com/Cheviiot/Orions-Gate
           Source0:        %{name}-%{version}.tar.gz
 
-          BuildRequires:  rpm-build-nodejs >= 20
+          BuildRequires:  rpm-build
+          BuildRequires:  nodejs >= 20
           BuildRequires:  gcc-c++
-          BuildRequires:  libX11-devel
-          BuildRequires:  libXext-devel
-          BuildRequires:  libxkbfile-devel
+          BuildRequires:  libX11-devel libXext-devel libxkbfile-devel
           BuildRequires:  ImageMagick
 
-          Requires:       libX11
-          Requires:       libXext
-          Requires:       libxkbfile
-
           %description
-          Orion's Gate is a transparent proxy web browser built on Electron 40,
-          designed for secure content access with integrated Voice Over Translation.
+          Orion's Gate - transparent proxy browser with VOT integration.
 
           %prep
           %setup -q
@@ -174,29 +162,33 @@ jobs:
           npx electron-builder --linux rpm --x64
 
           %install
+          mkdir -p %{buildroot}/opt/%{name}
           mkdir -p %{buildroot}%{_bindir}
           mkdir -p %{buildroot}%{_datadir}/applications
-          mkdir -p %{buildroot}%{_datadir}/icons/hicolor
-
-          # Extract from built RPM or install manually
-          if [ -f release/*.rpm ]; then
-            rpm2cpio release/*.rpm | (cd %{buildroot} && cpio -idmv)
-          fi
+          
+          cp -r release/linux-unpacked/* %{buildroot}/opt/%{name}/
+          ln -s /opt/%{name}/%{name} %{buildroot}%{_bindir}/%{name}
+          
+          cat > %{buildroot}%{_datadir}/applications/%{name}.desktop <<DESKTOP
+          [Desktop Entry]
+          Name=Orion's Gate
+          Exec=/opt/%{name}/%{name}
+          Type=Application
+          Icon=%{name}
+          Categories=Network;WebBrowser;
+          DESKTOP
 
           %files
+          /opt/%{name}
           %{_bindir}/%{name}
           %{_datadir}/applications/%{name}.desktop
-          %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
           %changelog
           * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-alt1
-          - Automated CI/CD build
+          - Automated build
           EOF
-          
-          # Replace version in spec
-          sed -i "s/\${PKG_VERSION}/${PKG_VERSION}/g" ~/rpmbuild/SPECS/orions-gate.spec
 
-      - name: Build RPM with rpmbuild
+      - name: Build RPM
         run: |
           rpmbuild -ba ~/rpmbuild/SPECS/orions-gate.spec
 
