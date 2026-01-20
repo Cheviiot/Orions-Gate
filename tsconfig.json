@@ -11,6 +11,8 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "sourceMap": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["src/shared/*"]
