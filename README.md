@@ -16,7 +16,7 @@
 - **Multi-language**: English, Russian, German, French
 - **Themes**: YouTube Dark/Light, Auto
 - **Hotkeys**: Alt+←/→, Ctrl+K, Ctrl+,
-- **Portable**: No installer required (AppImage, RPM, DEB, NSIS)
+- **Portable**: AppImage, RPM, DEB, NSIS(exe,msi)
 
 ---
 
