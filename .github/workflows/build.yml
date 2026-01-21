@@ -157,139 +157,7 @@ jobs:
           path: ${{ env.ARTIFACT_DIR }}/ubuntu/**
           retention-days: 30
 
-  altlinux_rpm:
-    name: AltLinux P11 - RPM (spec)
-    runs-on: ubuntu-latest
-
-    # ВАЖНО: сборка идёт в ALT контейнере
-    container:
-      image: alt:p11
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # Node можно ставить через setup-node даже в container job
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install build tools (ALT)
-        shell: bash
-        run: |
-          set -euo pipefail
-          # в контейнере обычно root, sudo может отсутствовать
-          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
-          $SUDO apt-get update
-          $SUDO apt-get install -y --no-install-recommends \
-            rpm-build rpm \
-            git tar gzip xz \
-            make gcc gcc-c++ \
-            findutils coreutils
-
-      - name: Locate .spec file
-        id: findspec
-        shell: bash
-        run: |
-          set -euo pipefail
-          SPEC_PATH="$(find . -maxdepth 6 -type f -name '*.spec' | head -n1 || true)"
-          if [ -z "$SPEC_PATH" ]; then
-            echo "ERROR: No .spec file found in repository" >&2
-            exit 1
-          fi
-          echo "spec=$SPEC_PATH" >> "$GITHUB_OUTPUT"
-          echo "Using spec: $SPEC_PATH"
-
-      - name: Prepare rpmbuild tree (fixed topdir)
-        shell: bash
-        run: |
-          set -euo pipefail
-          TOPDIR="$GITHUB_WORKSPACE/rpmbuild"
-          mkdir -p "$TOPDIR"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
-          echo "%_topdir $TOPDIR" > "$HOME/.rpmmacros"
-          echo "TOPDIR=$TOPDIR" >> "$GITHUB_ENV"
-
-      - name: Create Source0 tarball from current commit (name from spec if possible)
-        shell: bash
-        run: |
-          set -euo pipefail
-          SPEC="${{ steps.findspec.outputs.spec }}"
-          TOPDIR="$TOPDIR"
-
-          # Пытаемся аккуратно получить Name/Version/Source0 через rpmspec (если доступен)
-          if command -v rpmspec >/dev/null 2>&1; then
-            RESOLVED="$(rpmspec -P "$SPEC" || true)"
-            NAME="$(printf '%s\n' "$RESOLVED" | awk -F': *' '/^Name:/ {print $2; exit}')"
-            VER="$(printf '%s\n' "$RESOLVED" | awk -F': *' '/^Version:/ {print $2; exit}')"
-            SRC0="$(printf '%s\n' "$RESOLVED" | awk -F': *' '/^Source0:/ {print $2; exit}')"
-          fi
-
-          # Fallback: если rpmspec нет/не сработал — берём name/version из package.json
-          if [ -z "${NAME:-}" ] || [ -z "${VER:-}" ]; then
-            NAME="$(node -p "require('./package.json').name")"
-            VER="$(node -p "require('./package.json').version")"
-            VER="$(echo "$VER" | sed 's/-.*$//')"
-          fi
-
-          # Имя tarball: если Source0 в spec задан как что-то вроде %{name}-%{version}.tar.gz,
-          # то мы делаем стандартное NAME-VER.tar.gz. Если Source0 реальный файл — берём basename.
-          if [ -n "${SRC0:-}" ]; then
-            TAR_BASENAME="$(basename "$SRC0")"
-          else
-            TAR_BASENAME="${NAME}-${VER}.tar.gz"
-          fi
-
-          echo "NAME=$NAME"
-          echo "VER=$VER"
-          echo "TAR_BASENAME=$TAR_BASENAME"
-
-          git archive --format=tar.gz --prefix="${NAME}-${VER}/" \
-            -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
-
-          ls -lah "$TOPDIR/SOURCES"
-
-      - name: Copy spec into SPECS
-        shell: bash
-        run: |
-          set -euo pipefail
-          SPEC="${{ steps.findspec.outputs.spec }}"
-          cp -v "$SPEC" "$TOPDIR/SPECS/"
-          ls -lah "$TOPDIR/SPECS"
-
-      - name: Install npm deps and build (only if your spec expects built sources)
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-          npm run build
-
-      - name: Build RPM via rpmbuild (spec)
-        shell: bash
-        run: |
-          set -euo pipefail
-          SPEC_FILE="$(basename "${{ steps.findspec.outputs.spec }}")"
-          rpmbuild --define "_topdir $TOPDIR" -ba "$TOPDIR/SPECS/$SPEC_FILE"
-
-      - name: Collect AltLinux RPMs
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p "$ARTIFACT_DIR/altlinux"
-          find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "$ARTIFACT_DIR/altlinux/" \;
-          echo "Collected:"
-          ls -lah "$ARTIFACT_DIR/altlinux"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: altlinux-rpm
-          path: artifacts/altlinux/*
-          if-no-files-found: error
-          retention-days: 30
-      
-
+  
   windows_exe_msi:
     name: Windows - exe & msi
     runs-on: windows-latest
@@ -333,7 +201,7 @@ jobs:
 
   create_release:
     name: Create GitHub Release (on tag)
-    needs: [ubuntu_deb_appimage_rpm, altlinux_rpm, windows_exe_msi]
+    needs: [ubuntu_deb_appimage_rpm, windows_exe_msi]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:

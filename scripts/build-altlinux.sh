@@ -162,5 +162,5 @@ else
 fi
 
 echo -e "\n${GREEN}=== Build completed successfully ===${NC}"
-echo -e "To install (Alt Linux): ${YELLOW}sudo epm install ./$(basename "$RPM_FILE")${NC}"
-echo -e "Or via rpm: ${YELLOW}sudo rpm -Uvh ./$(basename "$RPM_FILE")${NC}"
+echo -e "To install (Alt Linux): ${YELLOW}sudo epm install ./release/$(basename "$RPM_FILE")${NC}"
+echo -e "Or via rpm: ${YELLOW}sudo rpm -Uvh ./release/$(basename "$RPM_FILE")${NC}"
