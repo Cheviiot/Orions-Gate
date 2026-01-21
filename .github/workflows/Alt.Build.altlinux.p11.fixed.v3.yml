@@ -63,7 +63,8 @@ jobs:
             gawk sed grep \
             ca-certificates curl rsync patch \
             python3-base \
-            shadow-utils
+            shadow-utils \
+            util-linux
 
           # Node toolchain (some specs build JS inside %build)
           apt-get install -y node npm || true
@@ -290,7 +291,16 @@ jobs:
           chmod +x "$BUILD_SH"
           chown builder:"$GROUP_NAME" "$BUILD_SH" || true
 
-          su -s /bin/bash builder -c "$BUILD_SH"
+          if command -v runuser >/dev/null 2>&1; then
+            runuser -u builder -- "$BUILD_SH"
+          elif command -v su >/dev/null 2>&1; then
+            su -s /bin/bash builder -c "$BUILD_SH"
+          else
+            echo "ERROR: Neither runuser nor su found in container. Install util-linux or shadow packages." >&2
+            echo "Debug: ls /bin /usr/bin | grep -E '^(su|runuser)$' || true" >&2
+            ls -lah /bin /usr/bin | grep -E '/(su|runuser)$' || true
+            exit 1
+          fi
 
           echo "== Collect RPMs =="
           find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "/work/${ARTIFACT_DIR}/altlinux/" \; || true
