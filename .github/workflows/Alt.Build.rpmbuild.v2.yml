@@ -219,21 +219,21 @@ jobs:
               if [ -n "${CAND:-}" ]; then
                 cp -v "$CAND" "$DESKTOP_DST"
               else
-                cat > "$DESKTOP_DST" <<EOF
-                [Desktop Entry]
-                Type=Application
-                Name=Orion's Gate
-                Name[ru]=Orion's Gate
-                Comment=Video overlay and subtitle system
-                Comment[ru]=Система видео-оверлея и субтитров
-                Exec=${NAME}
-                Icon=${NAME}
-                Terminal=false
-                Categories=Video;AudioVideo;
-                StartupWMClass=Orions-Gate
-                EOF
-                              fi
-                                 fi 
+                printf '%s\n' \
+                  "[Desktop Entry]" \
+                  "Type=Application" \
+                  "Name=Orion's Gate" \
+                  "Name[ru]=Orion's Gate" \
+                  "Comment=Video overlay and subtitle system" \
+                  "Comment[ru]=Система видео-оверлея и субтитров" \
+                  "Exec=${NAME}" \
+                  "Icon=${NAME}" \
+                  "Terminal=false" \
+                  "Categories=Video;AudioVideo;" \
+                  "StartupWMClass=Orions-Gate" \
+                > "$DESKTOP_DST"
+              fi
+            fi
 
             # Icon: try to find something suitable in repo
             if [ -f "/work/$ICON_NAME" ]; then
