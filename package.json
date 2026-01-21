@@ -2,7 +2,10 @@
   "name": "orions-gate",
   "version": "1.0.0-alpha.1",
   "private": true,
-  "author": "Cheviiot",
+  "author": {
+    "name": "Cheviiot",
+    "email": "cheviiot@users.noreply.github.com"
+  },
   "maintainer": "Cheviiot",
   "description": "Orion's Gate — Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and VOT integration.",
   "homepage": "https://github.com/Cheviiot/Orions-Gate",

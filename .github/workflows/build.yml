@@ -256,31 +256,7 @@ jobs:
         run: sudo -u builder npm run build
 
       - name: Create RPM package
-        run: |
-          FULL_VERSION=$(node -p "require('./package.json').version")
-          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
-          PKG_PRERELEASE=$(echo "$FULL_VERSION" | grep -oP '(?<=-).+' || echo "")
-          
-          if [ -z "$PKG_PRERELEASE" ]; then
-            PKG_RELEASE="alt1"
-          else
-            PKG_RELEASE="alt0.$(echo "$PKG_PRERELEASE" | tr -d '.-')"
-          fi
-          
-          # Install fpm for RPM creation
-          sudo apt-get install -y ruby ruby-dev
-          sudo gem install fpm
-          
-          sudo fpm -s dir -t rpm \
-            -n orions-gate \
-            -v "${PKG_VERSION}" \
-            --rpm-os linux \
-            --rpm-dist alt \
-            --release "${PKG_RELEASE}" \
-            --epoch 1 \
-            -C release/linux-unpacked \
-            -p release/orions-gate-\${version}-\${rpm:release}.x86_64.rpm \
-            opt usr
+        run: sudo -u builder bash scripts/build-altlinux.sh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

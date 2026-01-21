@@ -37,7 +37,6 @@ linux:
     Keywords: youtube;video;privacy;streaming
     Categories: Utility;Network;
     Icon: orions-gate
-    Exec: orions-gate %U
     StartupWMClass: Orion's Gate
     X-AppStream-Id: io.github.cheviiot.OrionsGate.desktop
   executableName: orions-gate
