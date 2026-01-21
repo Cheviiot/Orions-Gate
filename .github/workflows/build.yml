@@ -15,7 +15,7 @@ env:
 
 jobs:
   ubuntu_deb_appimage:
-    name: Ubuntu - deb & AppImage
+    name: Ubuntu - deb & AppImage & RPM
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -79,15 +79,27 @@ jobs:
             find . -type f -name 'fpm' -exec sh -c 'echo "---- {} ----"; file "{}"; ldd "{}" 2>&1 || true' \; || true
           fi
 
-      - name: Package deb & AppImage
+      - name: Install packaging tools for RPM
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ruby rpm dpkg-dev xz-utils fakeroot imagemagick || true
+
+      - name: Package deb, AppImage & RPM
+        run: |
+          # try project-provided scripts first, fallback to electron-builder
           npm run make:deb || npx electron-builder --linux deb --config electron-builder.yml
           npm run make:appimage || npx electron-builder --linux AppImage --config electron-builder.yml
+          npm run make:rpm || npx electron-builder --linux rpm --x64 --config electron-builder.yml || true
 
       - name: Collect artifacts
         run: |
           mkdir -p $ARTIFACT_DIR/ubuntu
-          cp -v release/*.{deb,AppImage} $ARTIFACT_DIR/ubuntu/ || true
+          # copy deb, AppImage, rpm into ubuntu artifact dir
+          shopt -s nullglob || true
+          cp -v release/*.{deb,AppImage,rpm} $ARTIFACT_DIR/ubuntu/ 2>/dev/null || true
+          # also copy any installers from release root
+          cp -v release/* $ARTIFACT_DIR/ubuntu/ 2>/dev/null || true
           ls -lah $ARTIFACT_DIR || true
 
       - name: Upload artifacts
@@ -95,119 +107,6 @@ jobs:
         with:
           name: ubuntu-deb-appimage
           path: ${{ env.ARTIFACT_DIR }}/ubuntu/**
-          retention-days: 30
-
-  fedora_rpm:
-    name: Fedora - RPM
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install system deps (dnf)
-        run: |
-          dnf -y update || true
-          # ensure libcrypt (libcrypt.so.1) is available for bundled fpm ruby
-          dnf install -y --setopt=install_weak_deps=False nodejs npm rpmdevtools gcc-c++ make python3 xz ImageMagick libxcrypt libxcrypt-compat || true
-
-      - name: DNF diagnostics
-        run: |
-          echo "WHOAMI: $(whoami)"
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          echo "ARTIFACT_DIR=$ARTIFACT_DIR"
-          echo "Which dnf:"; which dnf || true
-          echo "dnf version:"; dnf --version || true
-          echo "rpm version:"; rpm --version || true
-          echo "node version:"; node -v || true
-          echo "npm version:"; npm -v || true
-          echo "Listing / and workspace root:"; ls -lah / || true; ls -lah $GITHUB_WORKSPACE || true
-
-      - name: Install project dependencies
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-
-      - name: Build
-        run: npm run build
-
-      - name: Package RPM (electron-builder)
-        run: |
-          mkdir -p $ARTIFACT_DIR/fedora
-          npx electron-builder --linux rpm --x64 --config electron-builder.yml || true
-          # try to copy artifacts (may be empty if builder placed them elsewhere)
-          cp -v release/*.rpm $ARTIFACT_DIR/fedora/ || true
-          ls -lah $ARTIFACT_DIR || true
-
-      - name: Debug - show release and workspace
-        run: |
-          echo "PWD=$(pwd)"
-          echo "Listing workspace root:"
-          ls -lah . || true
-          echo "Listing release/:"
-          ls -lah release || true
-          echo "Find files under release/:"
-          find release -maxdepth 4 -type f -print || true
-          echo "List any rpms in entire workspace:" 
-          find . -type f -name "*.rpm" -print || true
-
-      - name: Collect Fedora RPMs
-        shell: bash
-        run: |
-          set -euo pipefail
-          ART_DIR="${{ env.ARTIFACT_DIR }}"
-          mkdir -p "$ART_DIR/fedora"
-
-          # Find RPMs in workspace excluding node_modules
-          find . -path './node_modules' -prune -o -type f -name '*.rpm' -print > /tmp/workspace-rpms.txt || true
-
-          # Also check $HOME/rpmbuild if present
-          if [ -d "$HOME/rpmbuild" ]; then
-            find "$HOME/rpmbuild" -type f -name '*.rpm' -print >> /tmp/workspace-rpms.txt || true
-          fi
-
-          # Normalize (remove empty lines) and unique
-          awk 'NF' /tmp/workspace-rpms.txt | sort -u > /tmp/found-rpms.txt || true
-
-          if [ ! -s /tmp/found-rpms.txt ]; then
-            echo "ERROR: no RPM files found in workspace or $HOME/rpmbuild"
-            echo "--- Workspace top-level ---"
-            ls -lah . || true
-            echo "--- release/ ---"
-            ls -lah release || true
-            if [ -d "$HOME/rpmbuild" ]; then
-              echo "--- $HOME/rpmbuild ---"
-              ls -lah "$HOME/rpmbuild" || true
-            fi
-            echo "Full find under workspace (for debugging):"
-            find . -type f -print || true
-            exit 1
-          fi
-
-          echo "Found RPMs:" 
-          cat /tmp/found-rpms.txt
-
-          while IFS= read -r f; do
-            echo "Copying: $f -> $ART_DIR/fedora/"
-            cp -v "$f" "$ART_DIR/fedora/" || true
-          done < /tmp/found-rpms.txt
-
-          echo "Artifacts in $ART_DIR/fedora:" 
-          ls -lah "$ART_DIR/fedora" || true
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: fedora-rpm
-          path: ${{ env.ARTIFACT_DIR }}/fedora/*.rpm
-          if-no-files-found: error
           retention-days: 30
 
   altlinux_rpm:
@@ -228,7 +127,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick || true
+            rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick \
+            ruby ruby-dev rubygems || true
+          # Install fpm (used by scripts/build-altlinux.sh)
+          sudo gem install --no-document fpm || true
 
       - name: Locate .spec file
         id: findspec
@@ -244,9 +146,8 @@ jobs:
 
       - name: Prepare rpmbuild tree
         run: |
-          rpmdev-setuptree || true
           echo "%_topdir $HOME/rpmbuild" > ~/.rpmmacros
-          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS ~/rpmbuild/BUILD
+          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS ~/rpmbuild/BUILD || true
 
       - name: Create source tarball from current commit
         if: steps.findspec.outputs.spec != ''
@@ -278,6 +179,14 @@ jobs:
           SPEC_FILE=$(basename "${{ steps.findspec.outputs.spec }}")
           rpmbuild --define "_topdir $HOME/rpmbuild" -ba ~/rpmbuild/SPECS/${SPEC_FILE}
 
+      - name: AltLinux diagnostics
+        if: steps.findspec.outputs.spec == ''
+        run: |
+          echo "WHOAMI: $(whoami)" || true
+          echo "PWD: $(pwd)" || true
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" || true
+          ls -lah . || true
+
       - name: Fallback - run scripts/build-altlinux.sh as builder
         if: steps.findspec.outputs.spec == ''
         run: |
@@ -290,10 +199,23 @@ jobs:
 
       - name: Collect AltLinux RPMs
         run: |
-          mkdir -p $ARTIFACT_DIR/altlinux
-          cp -v ~/rpmbuild/RPMS/**/*.rpm $ARTIFACT_DIR/altlinux/ 2>/dev/null || true
-          cp -v ~/rpmbuild/SRPMS/*.src.rpm $ARTIFACT_DIR/altlinux/ 2>/dev/null || true
-          ls -lah $ARTIFACT_DIR || true
+          set -euo pipefail
+          ART_DIR="${{ env.ARTIFACT_DIR }}"
+          mkdir -p "$ART_DIR/altlinux"
+
+          # Collect from rpmbuild (if present)
+          if [ -d "$HOME/rpmbuild" ]; then
+            find "$HOME/rpmbuild" -type f -name '*.rpm' -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/altlinux/" || true
+            find "$HOME/rpmbuild" -type f -name '*.src.rpm' -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/altlinux/" || true
+          fi
+
+          # Also collect any RPMs produced in release/
+          if [ -d "release" ]; then
+            find release -type f -name '*.rpm' -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/altlinux/" || true
+          fi
+
+          echo "Artifacts in $ART_DIR/altlinux:" 
+          ls -lah "$ART_DIR/altlinux" || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -345,7 +267,7 @@ jobs:
 
   create_release:
     name: Create GitHub Release (on tag)
-    needs: [ubuntu_deb_appimage, fedora_rpm, altlinux_rpm, windows_exe_msi]
+    needs: [ubuntu_deb_appimage, altlinux_rpm, windows_exe_msi]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
