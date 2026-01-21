@@ -1,142 +1,98 @@
-%define _unpackaged_files_terminate_build 1
-
 Name:           orions-gate
-Version:        0.1.0
-Release:        alt1
-Summary:        Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and automatic voiceover translation (VOT)
-Summary(ru_RU.UTF-8): Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, автоматический перевод озвучки (VOT)
-
-Packager:       Cheviiot <cheviiot@example.com>
-
-License:        GPL-2.0+
-Group:          Video
+Version:        1.0.alpha.1
+Release:        1%{?dist}
+Summary:        Orion's Gate — desktop application
+Summary(ru_RU.UTF-8): Orion's Gate — настольное приложение
+License:        MIT
+Group:          Graphical desktop/Other
 Url:            https://github.com/Cheviiot/Orions-Gate
 
-# Исходный код
+# Source0 should be a tarball prepared for RPM:
+# - must contain a directory "linux-unpacked/" with the ready-to-run Electron bundle (or equivalent)
+# - optionally "icon.png" (512x512 or 1024x1024)
 Source0:        %{name}-%{version}.tar.gz
 
-# Desktop интеграция
-Source1:        %{name}.desktop
-Source2:        %{name}.png
+ExclusiveArch:  x86_64
 
-# Патчи (если требуются)
-# Patch0:       %{name}-alt-fixes.patch
-
-# Архитектура: Electron приложение работает на x86_64 и других архитектурах
-# ExcludeArch:  ppc ppc64
-
-BuildRequires(pre): rpm-build-nodejs
-BuildRequires(pre): rpm-build-electron
-
-BuildRequires:  nodejs-npm
-BuildRequires:  gcc-c++
-BuildRequires:  make
-BuildRequires:  python3-base
-BuildRequires:  git-core
-BuildRequires:  libX11-devel
-BuildRequires:  libXrandr-devel
-BuildRequires:  libXinerama-devel
-BuildRequires:  libxkbfile-devel
-BuildRequires:  libxkbcommon-devel
-
-# Требуемые пакеты
-Requires:       electron >= 14.0
-Requires:       nodejs-base >= 14.0
-Requires:       glibc >= 2.31
-Requires:       libstdc++ >= 9.0
-Requires:       libX11
-Requires:       libXrandr
-Requires:       libXinerama
+# NOTE:
+# For Electron bundles, RPM usually auto-detects shared library dependencies from the binaries.
+# Add manual Requires: only if you intentionally exclude binaries from dependency scanning.
 
 %description
-Orions Gate is a Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and automatic voiceover translation (VOT)
+Orion's Gate is a desktop application packaged for ALT Linux.
 
 %description -l ru_RU.UTF-8
-Orions Gate - Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, автоматический перевод озвучки (VOT).
+Orion's Gate — настольное приложение, упакованное для ALT Linux.
 
 %prep
 %setup -q
 
-# Применение патчей (если они есть)
-# %patch0 -p1
-
-%build
-# Установка зависимостей npm
-npm ci --production
-
-# Если есть скрипт сборки в package.json
-npm run typecheck || true
-npm run build || true
-
-# Обработка нативных модулей (если требуется)
-# npm run compile || true
-
-%check
-# Опциональное тестирование (можно отключить с флагом)
-npm run test || true
-
 %install
-# Инициализация структуры каталогов в buildroot
-mkdir -p %{buildroot}%{_bindir}
-mkdir -p %{buildroot}%{_datadir}/%{name}
-mkdir -p %{buildroot}%{_datadir}/%{name}/assets
-mkdir -p %{buildroot}%{_datadir}/%{name}/locales
-mkdir -p %{buildroot}%{_datadir}/%{name}/src
-mkdir -p %{buildroot}%{_desktopdir}
-mkdir -p %{buildroot}%{_liconsdir}
-mkdir -p %{buildroot}%{_docdir}/%{name}
+rm -rf %{buildroot}
 
-# Копирование основных файлов приложения
-cp -r release/linux-*/* %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
-cp -r dist/* %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
-cp -r src/renderer/locales %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
-cp -r assets/vot %{buildroot}%{_datadir}/%{name}/assets/ 2>/dev/null || true
+# 1) Install application files (prepared bundle)
+install -d %{buildroot}%{_datadir}/%{name}
+cp -a linux-unpacked/* %{buildroot}%{_datadir}/%{name}/
 
-# Копирование node_modules (если требуется)
-if [ -d node_modules ]; then
-    cp -r node_modules %{buildroot}%{_datadir}/%{name}/
+# 2) Electron sandbox (if present) must be setuid root
+# (this is common practice in ALT packages for Electron apps)
+if [ -e %{buildroot}%{_datadir}/%{name}/chrome-sandbox ]; then
+    chmod 4755 %{buildroot}%{_datadir}/%{name}/chrome-sandbox
 fi
 
-# Копирование пакета package.json для информации
-cp package.json %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
+# 3) Ensure we have a stable executable name: %{name}
+# If your bundle already contains "orions-gate" executable — it will be used.
+# Otherwise we try to link the first executable file from bundle root to "%{name}".
+if [ -x %{buildroot}%{_datadir}/%{name}/%{name} ]; then
+    :
+elif [ -x %{buildroot}%{_datadir}/%{name}/orions-gate ]; then
+    ln -sf orions-gate %{buildroot}%{_datadir}/%{name}/%{name}
+else
+    bin="$(find %{buildroot}%{_datadir}/%{name} -maxdepth 1 -type f -perm -0100 | head -n 1)"
+    if [ -n "$bin" ]; then
+        ln -sf "$(basename "$bin")" %{buildroot}%{_datadir}/%{name}/%{name}
+    fi
+fi
 
-# Создание точки входа (wrapper скрипт)
-cat > %{buildroot}%{_bindir}/%{name} <<'EOF'
-#!/bin/bash
-exec /usr/share/%{name}/orions-gate "$@"
+# 4) Wrapper in PATH
+install -d %{buildroot}%{_bindir}
+cat > %{buildroot}%{_bindir}/%{name} <<EOF
+#!/bin/sh
+exec %{_datadir}/%{name}/%{name} "\$@"
 EOF
 chmod 0755 %{buildroot}%{_bindir}/%{name}
 
-# Desktop интеграция
-install -D -m 0644 %{SOURCE1} %{buildroot}%{_desktopdir}/%{name}.desktop
-install -D -m 0644 %{SOURCE2} %{buildroot}%{_liconsdir}/%{name}.png
+# 5) Desktop entry
+install -d %{buildroot}%{_desktopdir}
+cat > %{buildroot}%{_desktopdir}/%{name}.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=Orion's Gate
+Name[ru]=Orion's Gate
+Comment=Orion's Gate desktop application
+Comment[ru]=Настольное приложение Orion's Gate
+Exec=%{_bindir}/%{name} %U
+Icon=%{name}
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+EOF
 
-# Документация
-install -m 0644 README.md %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
-install -m 0644 README.ru.md %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
-install -m 0644 CHANGELOG.md %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
-install -m 0644 LICENSE %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
-
-# Поиск и установка локализаций (если используются)
-%find_lang %{name} || true
+# 6) Icon (prefer hicolor theme path)
+# Put your PNG as icon.png in the Source0 root.
+if [ -f icon.png ]; then
+    install -d %{buildroot}%{_iconsdir}/hicolor/512x512/apps
+    install -m0644 icon.png %{buildroot}%{_iconsdir}/hicolor/512x512/apps/%{name}.png
+fi
 
 %files
-%license LICENSE
-%doc README.md README.ru.md CHANGELOG.md
+%license LICENSE* COPYING*
+%doc README* CHANGELOG*
 %{_bindir}/%{name}
-%{_datadir}/%{name}
 %{_desktopdir}/%{name}.desktop
-%{_liconsdir}/%{name}.png
+%{_datadir}/%{name}/
+%{_iconsdir}/hicolor/*/apps/%{name}.png
 
 %changelog
-* Tue Jan 21 2026 Cheviiot <cheviiot@example.com> - 0.1.0-alt1
-- Initial release for Alt Linux
-- Added support for Russian localization
-- Optimized for Electron 14+ runtime
-- Integrated with VoT technology
-- Full desktop integration with .desktop file
-
-* Mon Dec 15 2025 Cheviiot <cheviiot@example.com> - 0.0.9-alt1
-- Beta release
-- Initial packaging for Alt Linux
-- Electron application base structure
+* Thu Jan 22 2026 Cheviiot (Александр) - 1.0.alpha.1-1
+- Initial package
