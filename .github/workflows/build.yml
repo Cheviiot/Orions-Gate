@@ -41,6 +41,44 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Executable diagnostics (ldd)
+        run: |
+          echo "Searching for executable ELF files and checking ldd for libcrypt"
+          set -euo pipefail
+          OUT=/tmp/executables.txt
+          : > "$OUT"
+
+          # Search common locations: workspace executables, electron-builder cache, release
+          find . -path './node_modules' -prune -o -type f -executable -print >>"$OUT" || true
+          if [ -d "$HOME/.cache/electron-builder" ]; then
+            find "$HOME/.cache/electron-builder" -type f -executable -print >>"$OUT" || true
+          fi
+          if [ -d "release" ]; then
+            find release -type f -executable -print >>"$OUT" || true
+          fi
+
+          sort -u "$OUT" -o "$OUT" || true
+
+          if [ ! -s "$OUT" ]; then
+            echo "No executables found to inspect"
+            exit 0
+          fi
+
+          echo "Executables found:";
+          cat "$OUT"
+
+          while IFS= read -r f; do
+            echo "---- $f ----"
+            file "$f" || true
+            ldd "$f" 2>&1 | sed -n '1,200p' || true
+          done < "$OUT"
+
+          # Also explicitly look for any file named 'fpm' and ldd it
+          if find . -type f -name 'fpm' -print -quit >/dev/null 2>&1; then
+            echo "Found fpm files:"; find . -type f -name 'fpm' -print
+            find . -type f -name 'fpm' -exec sh -c 'echo "---- {} ----"; file "{}"; ldd "{}" 2>&1 || true' \; || true
+          fi
+
       - name: Package deb & AppImage
         run: |
           npm run make:deb || npx electron-builder --linux deb --config electron-builder.yml
@@ -190,7 +228,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            rpm dpkg-dev rpm2cpio rpm-build rpmdevtools build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick || true
+            rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick || true
 
       - name: Locate .spec file
         id: findspec
@@ -244,13 +282,11 @@ jobs:
         if: steps.findspec.outputs.spec == ''
         run: |
           set -euo pipefail
-          sudo useradd -m builder || true
-          sudo chown -R builder:builder $PWD || true
-          echo "builder ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/builder > /dev/null
-          sudo chmod 0440 /etc/sudoers.d/builder
-          # use outer-shell-expanded workspace path so sudo session sees a concrete path
-          sudo -u builder bash -lc "cd '$GITHUB_WORKSPACE' && if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build"
-          sudo -u builder bash -lc "cd '$GITHUB_WORKSPACE' && bash scripts/build-altlinux.sh"
+          echo "Running AltLinux fallback script as current user (avoid sudo/chown issues)"
+          cd "$GITHUB_WORKSPACE"
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm run build
+          bash scripts/build-altlinux.sh
 
       - name: Collect AltLinux RPMs
         run: |
