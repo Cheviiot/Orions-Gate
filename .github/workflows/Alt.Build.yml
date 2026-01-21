@@ -73,7 +73,7 @@ jobs:
           set -euo pipefail
           docker pull "$ALT_IMAGE"
 
-          docker run --rm \
+          docker run --rm -i \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
             -e SPEC_PATH="${{ steps.detect.outputs.spec }}" \
