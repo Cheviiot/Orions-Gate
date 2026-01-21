@@ -1,0 +1,275 @@
+name: AltLinux P11 - RPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec_path:
+        description: "Optional path to spec (.spec or .spec.example). Example: packaging/orions-gate.spec.example"
+        required: false
+        default: ""
+  push:
+    branches: [ main, master ]
+    tags: [ "v*" ]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  altlinux_rpm:
+    name: AltLinux P11 - RPM (docker alt:p11)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # NOTE:
+      # Do NOT use `container: alt:p11` for the job.
+      # GitHub Actions JS-based actions (checkout/upload-artifact) require glibc libs that are absent in alt:p11,
+      # which leads to errors like: "node: error while loading shared libraries: libpthread.so.0 ..."
+
+      - name: Build RPM inside AltLinux P11 container (rpmbuild)
+        shell: bash
+        env:
+          SPEC_INPUT: ${{ inputs.spec_path }}
+        run: |
+          set -euo pipefail
+
+          docker pull alt:p11
+
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            -e SPEC_INPUT="${SPEC_INPUT:-}" \
+            -e ARTIFACT_DIR="${ARTIFACT_DIR}" \
+            alt:p11 \
+            bash --noprofile --norc -s <<'BASH'
+          set -euo pipefail
+
+          echo "=== AltLinux container ==="
+          cat /etc/*release || true
+
+          apt-get update
+
+          # Base tooling
+          apt-get install -y \
+            rpm rpm-build rpmspec \
+            git tar gzip xz \
+            make gcc gcc-c++ \
+            findutils coreutils which \
+            gawk sed grep \
+            ca-certificates curl rsync patch \
+            python3-base
+
+          mkdir -p "/work/${ARTIFACT_DIR}/altlinux"
+
+          # --- Detect spec (prefer input, then *.spec, then *.spec.example) ---
+          SPEC_PATH=""
+          if [ -n "${SPEC_INPUT:-}" ]; then
+            if [ -f "/work/${SPEC_INPUT#./}" ]; then
+              SPEC_PATH="/work/${SPEC_INPUT#./}"
+            else
+              echo "ERROR: inputs.spec_path not found: ${SPEC_INPUT}" >&2
+              exit 1
+            fi
+          else
+            SPEC_PATH="$(cd /work && (git ls-files | grep -iE '\.spec$' | head -n1 || true))"
+            if [ -z "$SPEC_PATH" ]; then
+              SPEC_PATH="$(cd /work && (git ls-files | grep -iE '\.spec\.example$' | head -n1 || true))"
+            fi
+            if [ -z "$SPEC_PATH" ]; then
+              SPEC_PATH="$(cd /work && (find . -type f -iname '*.spec' -o -iname '*.spec.example' 2>/dev/null | head -n1 || true))"
+              SPEC_PATH="${SPEC_PATH#./}"
+            fi
+            if [ -n "$SPEC_PATH" ]; then
+              SPEC_PATH="/work/${SPEC_PATH#./}"
+            fi
+          fi
+
+          if [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; then
+            echo "ERROR: No .spec / .spec.example found in repository. Add it or pass inputs.spec_path." >&2
+            exit 1
+          fi
+
+          echo "Using spec: $SPEC_PATH"
+
+          # --- rpmbuild tree ---
+          TOPDIR="/work/rpmbuild"
+          mkdir -p "$TOPDIR"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
+          echo "%_topdir $TOPDIR" > /root/.rpmmacros
+
+          # If *.spec.example — copy/rename to *.spec (rpmbuild expects *.spec)
+          SPEC_BASE="$(basename "$SPEC_PATH")"
+          if echo "$SPEC_BASE" | grep -qi '\.spec\.example$'; then
+            SPEC_REAL="$TOPDIR/SPECS/${SPEC_BASE%.example}"
+          else
+            SPEC_REAL="$TOPDIR/SPECS/$SPEC_BASE"
+          fi
+          cp -v "$SPEC_PATH" "$SPEC_REAL"
+
+          # --- Workaround: rpm-build-electron sometimes отсутствует в репозитории p11 ---
+          # If it cannot be installed, we drop it from BuildRequires(pre) in the copied spec (repo remains untouched).
+          if grep -qiE '^[[:space:]]*BuildRequires\([[:space:]]*pre[[:space:]]*\):[[:space:]]*rpm-build-electron([[:space:]]|$)' "$SPEC_REAL"; then
+            if apt-cache show rpm-build-electron >/dev/null 2>&1; then
+              echo "Installing rpm-build-electron (present in repo)"
+              apt-get install -y rpm-build-electron
+            else
+              echo "WARN: rpm-build-electron not found in AltLinux P11 repos in this container."
+              echo "      Patching spec copy to remove BuildRequires(pre): rpm-build-electron"
+              sed -i -E '/^[[:space:]]*BuildRequires\([[:space:]]*pre[[:space:]]*\):[[:space:]]*rpm-build-electron([[:space:]]|$)/Id' "$SPEC_REAL"
+            fi
+          fi
+
+          # --- Install BuildRequires from spec (best-effort fail-fast) ---
+          echo "== Installing BuildRequires from spec =="
+          # Extract tokens from BuildRequires/BuildRequires(pre) lines (ignore version operators / numbers)
+          REQS="$(
+            awk 'BEGIN{IGNORECASE=1}
+              /^[[:space:]]*BuildRequires/{
+                sub(/^[^:]*:[[:space:]]*/, "", $0);
+                gsub(/,/, " ", $0);
+                print $0
+              }' "$SPEC_REAL" \
+            | tr " \t" "\n" \
+            | sed -E 's/[[:space:]]+//g' \
+            | grep -Ev '^(>=|<=|=|>|<)$' \
+            | grep -Ev '^[0-9]+' \
+            | grep -Ev '^%\\{' \
+            | sort -u
+          )"
+
+          if [ -n "$REQS" ]; then
+            # shellcheck disable=SC2086
+            for pkg in $REQS; do
+              # we already handled rpm-build-electron above (either installed or removed)
+              if [ "$pkg" = "rpm-build-electron" ]; then
+                continue
+              fi
+              echo "  -> $pkg"
+              apt-get install -y "$pkg"
+            done
+          fi
+
+          echo "== Parse Name/Version and Sources =="
+          NAME="$(awk -F': *' 'tolower($1)=="name" {print $2; exit}' "$SPEC_REAL" | tr -d "\r")"
+          VERSION="$(awk -F': *' 'tolower($1)=="version" {print $2; exit}' "$SPEC_REAL" | tr -d "\r")"
+          SRC0_RAW="$(awk -F': *' 'tolower($1)=="source0" {print $2; exit}' "$SPEC_REAL" | tr -d "\r" || true)"
+          SRC1_RAW="$(awk -F': *' 'tolower($1)=="source1" {print $2; exit}' "$SPEC_REAL" | tr -d "\r" || true)"
+          SRC2_RAW="$(awk -F': *' 'tolower($1)=="source2" {print $2; exit}' "$SPEC_REAL" | tr -d "\r" || true)"
+
+          if [ -z "${NAME:-}" ] || [ -z "${VERSION:-}" ]; then
+            echo "ERROR: Cannot parse Name/Version from spec" >&2
+            head -n 80 "$SPEC_REAL" || true
+            exit 1
+          fi
+
+          # Resolve filenames for Source0/1/2 (expand %{name} %{version})
+          expand_src() {
+            local s="$1"
+            s="${s//%{name}/$NAME}"
+            s="${s//%{version}/$VERSION}"
+            s="$(basename "$s")"
+            printf "%s" "$s"
+          }
+
+          TAR_BASENAME="$(expand_src "${SRC0_RAW:-%{name}-%{version}.tar.gz}")"
+          DESKTOP_NAME=""
+          ICON_NAME=""
+
+          if [ -n "${SRC1_RAW:-}" ] && ! echo "$SRC1_RAW" | grep -qE '^[a-zA-Z]+://'; then
+            DESKTOP_NAME="$(expand_src "$SRC1_RAW")"
+          fi
+          if [ -n "${SRC2_RAW:-}" ] && ! echo "$SRC2_RAW" | grep -qE '^[a-zA-Z]+://'; then
+            ICON_NAME="$(expand_src "$SRC2_RAW")"
+          fi
+
+          echo "Name=$NAME"
+          echo "Version=$VERSION"
+          echo "Source0=$TAR_BASENAME"
+          echo "Source1=$DESKTOP_NAME"
+          echo "Source2=$ICON_NAME"
+
+          echo "== Create Source0 tarball from current commit =="
+          git -C /work archive --format=tar.gz --prefix="${NAME}-${VERSION}/" -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
+
+          echo "== Provide Source1/Source2 if needed =="
+          # Try to copy from repo, else generate minimal ones
+          if [ -n "$DESKTOP_NAME" ]; then
+            if [ -f "/work/$DESKTOP_NAME" ]; then
+              cp -v "/work/$DESKTOP_NAME" "$TOPDIR/SOURCES/$DESKTOP_NAME"
+            else
+              echo "Generating $DESKTOP_NAME"
+              printf '%s\n' \
+                '[Desktop Entry]' \
+                'Type=Application' \
+                "Name=Orion's Gate" \
+                "Exec=${NAME} %U" \
+                "Icon=${NAME}" \
+                'Terminal=false' \
+                'Categories=Network;Utility;' \
+                'StartupNotify=true' \
+                > "$TOPDIR/SOURCES/$DESKTOP_NAME"
+            fi
+          fi
+
+          if [ -n "$ICON_NAME" ]; then
+            if [ -f "/work/$ICON_NAME" ]; then
+              cp -v "/work/$ICON_NAME" "$TOPDIR/SOURCES/$ICON_NAME"
+            elif [ -f "/work/resources/icon_512.png" ]; then
+              cp -v "/work/resources/icon_512.png" "$TOPDIR/SOURCES/$ICON_NAME"
+            elif [ -f "/work/resources/icon.png" ]; then
+              cp -v "/work/resources/icon.png" "$TOPDIR/SOURCES/$ICON_NAME"
+            else
+              echo "WARN: Icon source not found. Creating 1x1 placeholder (build may fail if spec requires real icon)."
+              printf '\x89PNG\r\n\x1a\n' > "$TOPDIR/SOURCES/$ICON_NAME" || true
+            fi
+          fi
+
+          echo "== Build RPM =="
+          rpmbuild --define "_topdir $TOPDIR" -ba "$SPEC_REAL"
+
+          echo "== Collect RPMs =="
+          find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "/work/${ARTIFACT_DIR}/altlinux/" \; || true
+
+          echo "== Collected =="
+          ls -lah "/work/${ARTIFACT_DIR}/altlinux" || true
+
+          if ! ls "/work/${ARTIFACT_DIR}/altlinux/"*.rpm >/dev/null 2>&1 && \
+             ! ls "/work/${ARTIFACT_DIR}/altlinux/"*.src.rpm >/dev/null 2>&1; then
+            echo "ERROR: RPM not produced. Nothing to upload." >&2
+            exit 1
+          fi
+          BASH
+
+      - name: Upload artifacts (AltLinux RPM)
+        uses: actions/upload-artifact@v4
+        with:
+          name: altlinux-rpm
+          path: ${{ env.ARTIFACT_DIR }}/altlinux/**
+          if-no-files-found: error
+          retention-days: 30
+
+  create_release:
+    name: Create GitHub Release (on tag)
+    needs: [altlinux_rpm]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            downloaded-artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
