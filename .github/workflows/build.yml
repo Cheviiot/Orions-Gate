@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
@@ -71,7 +71,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: '20'
 
       - name: Install system deps (dnf)
         run: |
@@ -102,43 +102,67 @@ jobs:
   altlinux_rpm:
     name: AltLinux P11 - RPM (use existing script)
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/altlinux/base:p11
-      options: --user root
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build dependencies (Alt/apt)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install packaging tools
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends ca-certificates curl sudo git rpm-build rpmlint make gcc g++ python3 nodejs npm xz-utils fakeroot ruby ruby-dev build-essential imagemagick
-          gem install --no-document fpm || true
-          # ensure script's hardcoded FPM path exists
-          if [ -x "$(which fpm)" ]; then mkdir -p /usr/lib/ruby/bin || true; ln -sf "$(which fpm)" /usr/lib/ruby/bin/fpm || true; fi
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            rpm dpkg-dev rpm2cpio rpm-build rpmdevtools build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick || true
 
-      - name: Create builder user
+      - name: Locate .spec file
+        id: findspec
         run: |
-          useradd -m builder || true
-          chown -R builder:builder $PWD || true
-          printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
-          chmod 0440 /etc/sudoers.d/builder
+          set -e
+          SPEC_PATH=$(find . -maxdepth 4 -type f -name "*.spec" | head -n1 || true)
+          if [ -z "$SPEC_PATH" ]; then
+            echo "No .spec file found in repository. If you have a .spec outside repo, provide its path or continue to use scripts/build-altlinux.sh" >&2
+            exit 1
+          fi
+          echo "spec=$SPEC_PATH" >> $GITHUB_OUTPUT
 
-      - name: Install project dependencies as builder
-        run: sudo -u builder bash -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi'
-
-      - name: Build application as builder
-        run: sudo -u builder npm run build
-
-      - name: Run AltLinux packaging script as builder
+      - name: Prepare rpmbuild tree
         run: |
-          sudo -u builder bash -lc 'bash scripts/build-altlinux.sh'
+          rpmdev-setuptree || true
+          echo "%_topdir $HOME/rpmbuild" > ~/.rpmmacros
+          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS ~/rpmbuild/BUILD
+
+      - name: Create source tarball from current commit
+        run: |
+          FULL_VERSION=$(node -p "require('./package.json').version")
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
+          TAR_NAME=${PKG_NAME}-${PKG_VERSION}.tar.gz
+          git archive --format=tar.gz --prefix=${PKG_NAME}-${PKG_VERSION}/ -o ~/rpmbuild/SOURCES/${TAR_NAME} HEAD
+
+      - name: Copy spec into SPECS
+        run: |
+          SPEC_PATH=${{ steps.findspec.outputs.spec }}
+          cp "$SPEC_PATH" ~/rpmbuild/SPECS/
+
+      - name: Install npm deps and build (for rpm sources)
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npm run build
+
+      - name: Build RPM via rpmbuild
+        run: |
+          set -x
+          SPEC_FILE=$(basename "${{ steps.findspec.outputs.spec }}")
+          rpmbuild --define "_topdir $HOME/rpmbuild" -ba ~/rpmbuild/SPECS/${SPEC_FILE}
 
       - name: Collect AltLinux RPMs
         run: |
           mkdir -p $ARTIFACT_DIR/altlinux
-          cp -v release/*.rpm $ARTIFACT_DIR/altlinux/ || true
-          cp -v /home/builder/rpmbuild/RPMS/**/*.rpm $ARTIFACT_DIR/altlinux/ 2>/dev/null || true
+          cp -v ~/rpmbuild/RPMS/**/*.rpm $ARTIFACT_DIR/altlinux/ 2>/dev/null || true
+          cp -v ~/rpmbuild/SRPMS/*.src.rpm $ARTIFACT_DIR/altlinux/ 2>/dev/null || true
           ls -lah $ARTIFACT_DIR || true
 
       - name: Upload artifacts
@@ -158,7 +182,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
