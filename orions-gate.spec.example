@@ -3,8 +3,8 @@
 Name:           orions-gate
 Version:        0.1.0
 Release:        alt1
-Summary:        Video overlay and subtitle system based on Vot
-Summary(ru_RU.UTF-8): Система видео-оверлея и субтитров на основе VoT
+Summary:        Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and automatic voiceover translation (VOT)
+Summary(ru_RU.UTF-8): Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, автоматический перевод озвучки (VOT)
 
 Packager:       Cheviiot <cheviiot@example.com>
 
@@ -49,20 +49,10 @@ Requires:       libXrandr
 Requires:       libXinerama
 
 %description
-Orions Gate is a powerful video overlay and subtitle system built with Electron.
-It provides advanced features for video processing and subtitle management,
-including integration with VoT (Video Over Text) technology.
-
-The application supports multiple video formats and provides a user-friendly
-interface for managing video playback and subtitle synchronization.
+Orions Gate is a Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and automatic voiceover translation (VOT)
 
 %description -l ru_RU.UTF-8
-Orions Gate - это мощная система видео-оверлея и субтитров, разработанная на Electron.
-Она обеспечивает расширенные возможности для обработки видео и управления субтитрами,
-включая интеграцию с технологией VoT (Video Over Text).
-
-Приложение поддерживает множество видеоформатов и предоставляет удобный интерфейс
-для управления воспроизведением видео и синхронизацией субтитров.
+Orions Gate - Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, автоматический перевод озвучки (VOT).
 
 %prep
 %setup -q

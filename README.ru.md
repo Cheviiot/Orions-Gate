@@ -3,7 +3,7 @@
 
 ![Orion's Gate Banner](https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/resources/banner.png)
 
-> **Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, красивый оверлей-интерфейс.**
+> **Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, автоматический перевод озвучки (VOT).**
 
 ---
 
