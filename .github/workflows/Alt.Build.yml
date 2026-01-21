@@ -1,4 +1,4 @@
-name: Alt P11 - RPM
+name: AltLinux P11 - RPM
 
 on:
   workflow_dispatch:
@@ -29,43 +29,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect AltLinux build method (script or spec)
+      - name: Detect AltLinux build method (prefer spec)
         id: detect
         shell: bash
         run: |
           set -euo pipefail
 
-          # 0) If user provided spec_path via workflow_dispatch, trust it
-          SPEC_INPUT="${{ inputs.spec_path }}"
+          # workflow_dispatch only
+          SPEC_INPUT="${{ github.event.inputs.spec_path }}"
           if [ -n "${SPEC_INPUT:-}" ]; then
             if [ -f "$SPEC_INPUT" ]; then
               echo "mode=spec" >> "$GITHUB_OUTPUT"
               echo "spec=$SPEC_INPUT" >> "$GITHUB_OUTPUT"
               echo "Detected: spec (from input) -> $SPEC_INPUT"
               exit 0
-            else
-              echo "ERROR: Provided spec_path not found: $SPEC_INPUT" >&2
-              exit 1
             fi
+            echo "ERROR: Provided spec_path not found: $SPEC_INPUT" >&2
+            exit 1
           fi
 
-          # 1) Prefer script if exists
-          if [ -f "scripts/build-altlinux.sh" ]; then
-            echo "mode=script" >> "$GITHUB_OUTPUT"
-            echo "script=scripts/build-altlinux.sh" >> "$GITHUB_OUTPUT"
-            echo "Detected: script -> scripts/build-altlinux.sh"
-            exit 0
-          fi
-
-          # 2) Try find spec in tracked files first
-          SPEC_PATH="$(git ls-files | grep -iE '\.spec$' | head -n1 || true)"
+          # Prefer *.spec if present
+          SPEC_PATH="$(git ls-files | grep -iE '\\.spec$' | head -n1 || true)"
           if [ -z "$SPEC_PATH" ]; then
-            # 3) Fallback: find in filesystem (case-insensitive), allow deep nesting
             SPEC_PATH="$(find . -type f -iname '*.spec' 2>/dev/null | head -n1 || true)"
           fi
-
           if [ -n "$SPEC_PATH" ]; then
-            # normalize leading ./
             SPEC_PATH="${SPEC_PATH#./}"
             echo "mode=spec" >> "$GITHUB_OUTPUT"
             echo "spec=$SPEC_PATH" >> "$GITHUB_OUTPUT"
@@ -73,21 +61,29 @@ jobs:
             exit 0
           fi
 
+          # Fallback: script
+          if [ -f "scripts/build-altlinux.sh" ]; then
+            echo "mode=script" >> "$GITHUB_OUTPUT"
+            echo "script=scripts/build-altlinux.sh" >> "$GITHUB_OUTPUT"
+            echo "Detected: script -> scripts/build-altlinux.sh"
+            exit 0
+          fi
+
           echo "mode=none" >> "$GITHUB_OUTPUT"
-          echo "No script and no spec found."
+          echo "No spec and no scripts/build-altlinux.sh found."
 
       - name: Diagnostics if nothing detected
         if: steps.detect.outputs.mode == 'none'
         shell: bash
         run: |
           set -euo pipefail
-          echo "ERROR: No scripts/build-altlinux.sh and no *.spec found." >&2
+          echo "ERROR: No *.spec and no scripts/build-altlinux.sh found." >&2
           echo "---- repo root ----"
           ls -lah
           echo "---- find candidates (top 200) ----"
-          find . -maxdepth 6 -type f \( -iname '*alt*' -o -iname '*.spec*' -o -iname '*rpm*' -o -iname '*packag*' \) | head -n 200 || true
+          find . -maxdepth 8 -type f \( -iname '*alt*' -o -iname '*.spec*' -o -iname '*rpm*' -o -iname '*packag*' \) | head -n 200 || true
           echo "---- git ls-files grep spec (case-insensitive) ----"
-          git ls-files | grep -iE '\.spec$' || true
+          git ls-files | grep -iE '\\.spec$' || true
           exit 1
 
       - name: Build in AltLinux P11 container
@@ -108,107 +104,104 @@ jobs:
             -e SCRIPT_PATH="$SCRIPT_PATH" \
             -e ARTIFACT_DIR="${{ env.ARTIFACT_DIR }}" \
             alt:p11 \
-            bash -lc '
-              set -euo pipefail
+            bash --noprofile --norc -s <<'BASH'
+          set -euo pipefail
 
-              apt-get update
+          apt-get update
+          apt-get install -y \
+            rpm rpm-build rpmspec \
+            git tar gzip xz \
+            make gcc gcc-c++ \
+            findutils coreutils which \
+            gawk sed grep \
+            ca-certificates curl rsync patch \
+            node npm
 
-              # базовые зависимости + node/npm
-              apt-get install -y \
-              rpm rpm-build \
-              git tar gzip xz \
-              make gcc gcc-c++ \
-              findutils coreutils \
-              node npm
-              
-              # Ruby + gem (в ALT названия могут отличаться — пробуем варианты)
+          echo "MODE=$MODE"
+          echo "SPEC_PATH=$SPEC_PATH"
+          echo "SCRIPT_PATH=$SCRIPT_PATH"
+          echo "node=$(node -v || true) npm=$(npm -v || true)"
+          echo "rpmbuild=$(rpmbuild --version | head -n1)"
+
+          mkdir -p "/work/$ARTIFACT_DIR/altlinux"
+
+          if [ "$MODE" = "script" ]; then
+            if [ ! -f "$SCRIPT_PATH" ]; then
+              echo "ERROR: script not found: $SCRIPT_PATH" >&2
+              exit 1
+            fi
+
+            # scripts/build-altlinux.sh often requires fpm — install it if missing
+            if ! command -v fpm >/dev/null 2>&1; then
               if ! command -v gem >/dev/null 2>&1; then
-              apt-get install -y ruby rubygems || apt-get install -y ruby gem
+                apt-get install -y ruby rubygems || apt-get install -y ruby gem
               else
-              apt-get install -y ruby || true
+                apt-get install -y ruby || true
               fi
-              
-              # поставить fpm (мы в контейнере обычно root, поэтому без sudo)
+              apt-get install -y ruby-devel 2>/dev/null || apt-get install -y ruby-dev 2>/dev/null || true
+
               gem install --no-document fpm
-              
-              # гарантируем, что fpm в PATH
-              GEM_BINDIR="$(ruby -rrubygems -e 'print Gem.bindir')"
+
+              GEM_BINDIR="$(ruby -rrubygems -e "print Gem.bindir")"
               export PATH="$GEM_BINDIR:$PATH"
-              command -v fpm
-              fpm --version
+            fi
+            fpm --version
 
+            chmod +x "$SCRIPT_PATH" || true
+            bash "$SCRIPT_PATH"
 
-              echo "MODE=$MODE"
-              echo "SPEC_PATH=$SPEC_PATH"
-              echo "SCRIPT_PATH=$SCRIPT_PATH"
-              echo "node=$(node -v || true) npm=$(npm -v || true)"
-              echo "rpmbuild=$(rpmbuild --version | head -n1)"
+            find /work -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "/work/$ARTIFACT_DIR/altlinux/" \; || true
+          else
+            SPEC="/work/${SPEC_PATH#./}"
+            if [ ! -f "$SPEC" ]; then
+              echo "ERROR: spec not found at $SPEC" >&2
+              exit 1
+            fi
 
-              mkdir -p "/work/$ARTIFACT_DIR/altlinux"
+            TOPDIR="/work/rpmbuild"
+            mkdir -p "$TOPDIR"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
+            echo "%_topdir $TOPDIR" > /root/.rpmmacros
 
-              if [ "$MODE" = "script" ]; then
-                if [ ! -f "$SCRIPT_PATH" ]; then
-                  echo "ERROR: script not found: $SCRIPT_PATH" >&2
-                  exit 1
-                fi
-                chmod +x "$SCRIPT_PATH" || true
-                bash "$SCRIPT_PATH"
+            NAME="$(awk -F": *" 'tolower($1)=="name" {print $2; exit}' "$SPEC" | tr -d "\r")"
+            VERSION="$(awk -F": *" 'tolower($1)=="version" {print $2; exit}' "$SPEC" | tr -d "\r")"
+            SRC0_RAW="$(awk -F": *" 'tolower($1)=="source0" {print $2; exit}' "$SPEC" | tr -d "\r" || true)"
 
-                # Собираем rpm где бы они ни лежали
-                find /work -type f -name "*.rpm" -o -name "*.src.rpm" 2>/dev/null | head -n 200 || true
-                find /work -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "/work/$ARTIFACT_DIR/altlinux/" \; || true
-              else
-                # MODE=spec: собираем строго по spec
-                SPEC="/work/${SPEC_PATH#./}"
-                if [ ! -f "$SPEC" ]; then
-                  echo "ERROR: spec not found at $SPEC" >&2
-                  exit 1
-                fi
+            if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
+              echo "ERROR: Cannot parse Name/Version from spec" >&2
+              exit 1
+            fi
 
-                TOPDIR="/work/rpmbuild"
-                mkdir -p "$TOPDIR"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
-                echo "%_topdir $TOPDIR" > /root/.rpmmacros
+            TAR_BASENAME=""
+            if [ -n "${SRC0_RAW:-}" ] && ! echo "$SRC0_RAW" | grep -qE "^[a-zA-Z]+://"; then
+              TAR_BASENAME="$SRC0_RAW"
+              TAR_BASENAME="${TAR_BASENAME//%{name}/$NAME}"
+              TAR_BASENAME="${TAR_BASENAME//%{version}/$VERSION}"
+              TAR_BASENAME="$(basename "$TAR_BASENAME")"
+              if echo "$TAR_BASENAME" | grep -q "%{" ; then TAR_BASENAME=""; fi
+            fi
+            if [ -z "$TAR_BASENAME" ]; then
+              TAR_BASENAME="${NAME}-${VERSION}.tar.gz"
+            fi
 
-                NAME="$(awk -F": *" "tolower(\$1)==\"name\" {print \$2; exit}" "$SPEC" | tr -d "\r")"
-                VERSION="$(awk -F": *" "tolower(\$1)==\"version\" {print \$2; exit}" "$SPEC" | tr -d "\r")"
-                SRC0_RAW="$(awk -F": *" "tolower(\$1)==\"source0\" {print \$2; exit}" "$SPEC" | tr -d "\r" || true)"
+            git archive --format=tar.gz --prefix="${NAME}-${VERSION}/" \
+              -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
 
-                if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
-                  echo "ERROR: Cannot parse Name/Version from spec" >&2
-                  exit 1
-                fi
+            cp -v "$SPEC" "$TOPDIR/SPECS/"
+            SPEC_FILE="$(basename "$SPEC")"
+            rpmbuild --define "_topdir $TOPDIR" -ba "$TOPDIR/SPECS/$SPEC_FILE"
 
-                TAR_BASENAME=""
-                if [ -n "${SRC0_RAW:-}" ] && ! echo "$SRC0_RAW" | grep -qE "^[a-zA-Z]+://"; then
-                  TAR_BASENAME="$SRC0_RAW"
-                  TAR_BASENAME="${TAR_BASENAME//%{name}/$NAME}"
-                  TAR_BASENAME="${TAR_BASENAME//%{version}/$VERSION}"
-                  TAR_BASENAME="$(basename "$TAR_BASENAME")"
-                  if echo "$TAR_BASENAME" | grep -q "%{" ; then TAR_BASENAME=""; fi
-                fi
-                if [ -z "$TAR_BASENAME" ]; then
-                  TAR_BASENAME="${NAME}-${VERSION}.tar.gz"
-                fi
+            find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "/work/$ARTIFACT_DIR/altlinux/" \; || true
+          fi
 
-                git archive --format=tar.gz --prefix="${NAME}-${VERSION}/" \
-                  -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
+          echo "== Collected =="
+          ls -lah "/work/$ARTIFACT_DIR/altlinux" || true
 
-                cp -v "$SPEC" "$TOPDIR/SPECS/"
-                SPEC_FILE="$(basename "$SPEC")"
-                rpmbuild --define "_topdir $TOPDIR" -ba "$TOPDIR/SPECS/$SPEC_FILE"
-
-                find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "/work/$ARTIFACT_DIR/altlinux/" \;
-              fi
-
-              echo "== Collected =="
-              ls -lah "/work/$ARTIFACT_DIR/altlinux" || true
-
-              if ! ls "/work/$ARTIFACT_DIR/altlinux/"*.rpm >/dev/null 2>&1 && \
-                 ! ls "/work/$ARTIFACT_DIR/altlinux/"*.src.rpm >/dev/null 2>&1; then
-                echo "ERROR: RPM not produced. Nothing to upload." >&2
-                exit 1
-              fi
-            '
+          if ! ls "/work/$ARTIFACT_DIR/altlinux/"*.rpm >/dev/null 2>&1 && \
+             ! ls "/work/$ARTIFACT_DIR/altlinux/"*.src.rpm >/dev/null 2>&1; then
+            echo "ERROR: RPM not produced. Nothing to upload." >&2
+            exit 1
+          fi
+          BASH
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
