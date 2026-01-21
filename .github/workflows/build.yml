@@ -1,4 +1,4 @@
-name: Build Release Artifacts
+name: Build
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -102,6 +102,25 @@ jobs:
           echo "which fpm (after):"; command -v fpm || true
           echo "fpm --version:"; fpm --version || true
 
+      - name: Find fpm binaries and show ldd
+        run: |
+          set -euo pipefail
+          echo "Searching for fpm in common locations"
+          echo "Look in ~/.cache/electron-builder:"; find "$HOME/.cache/electron-builder" -type f -name 'fpm' -print -exec file {} \; -exec ldd {} \; 2>/dev/null || true
+          echo "Look in node_modules and /usr/local/bin:"; find . -path './node_modules' -prune -o -type f -name 'fpm' -print -exec file {} \; -exec ldd {} \; 2>/dev/null || true
+          command -v fpm || true
+
+      - name: Build RPM (verbose)
+        env:
+          DEBUG: electron-builder
+        run: |
+          set -xuo pipefail
+          echo "Running electron-builder for RPM with DEBUG logs"
+          mkdir -p /tmp/eb-log
+          DEBUG=electron-builder npx electron-builder --linux rpm --x64 --config electron-builder.yml --publish never 2>&1 | tee /tmp/eb-log/electron-builder-rpm.log || true
+          echo "--- last 200 lines of electron-builder log ---"
+          tail -n 200 /tmp/eb-log/electron-builder-rpm.log || true
+
       - name: Package deb, AppImage & RPM
         run: |
           # try project-provided scripts first, fallback to electron-builder
@@ -132,176 +151,144 @@ jobs:
           ls -lah "$ART_DIR" || true
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: ubuntu-deb-appimage
           path: ${{ env.ARTIFACT_DIR }}/ubuntu/**
           retention-days: 30
 
   altlinux_rpm:
-    name: AltLinux P11 - RPM
+    name: AltLinux P11 - RPM (spec)
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # ВАЖНО: сборка идёт в ALT контейнере
+    container:
+      image: alt:p11
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
+      # Node можно ставить через setup-node даже в container job
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+          cache: npm
 
-      - name: Install packaging tools
+      - name: Install build tools (ALT)
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick \
-            ruby-full ruby-dev rubygems rpm-build || true
-
-      - name: Install fpm (user gem) and add to PATH
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Install fpm into the user's gem directory to avoid requiring sudo
-          gem install --user-install --no-document fpm || true
-
-          # Determine the user gem bin directory and add it to PATH for subsequent steps
-          GEM_USER_BIN=$(ruby -e 'require "rubygems"; print File.join(Gem.user_dir, "bin")')
-          echo "GEM_USER_BIN=$GEM_USER_BIN"
-          echo "$GEM_USER_BIN" >> "$GITHUB_PATH"
-
-          # If fpm is still not on PATH, try to symlink the system gem bindir fpm into /usr/local/bin
-          if ! command -v fpm >/dev/null 2>&1; then
-            GEM_BINDIR=$(ruby -rrubygems -e 'puts Gem.bindir' || true)
-            if [ -n "$GEM_BINDIR" ] && [ -f "$GEM_BINDIR/fpm" ]; then
-              sudo ln -sf "$GEM_BINDIR/fpm" /usr/local/bin/fpm || true
-            fi
-          fi
-
-          echo "which fpm: $(command -v fpm || true)"
-          fpm --version || true
-
-      - name: Verify fpm installation
-        run: |
-          set -euo pipefail
-          echo "---- gem environment ----"
-          gem env || true
-          echo "---- ruby Gem.bindir ----"
-          ruby -rrubygems -e 'puts Gem.bindir' || true
-          echo "---- which fpm (before) ----"
-          command -v fpm || true
-
-          if ! command -v fpm >/dev/null 2>&1; then
-            echo "fpm not found in PATH — attempting sudo gem install again and creating symlink"
-            sudo gem install --no-document fpm || true
-          fi
-
-          GEM_BINDIR=$(ruby -rrubygems -e 'require "rubygems"; puts Gem.bindir') || true
-          if [ -n "$GEM_BINDIR" ] && [ -f "$GEM_BINDIR/fpm" ]; then
-            echo "Found fpm at $GEM_BINDIR/fpm — symlinking to /usr/local/bin"
-            sudo ln -sf "$GEM_BINDIR/fpm" /usr/local/bin/fpm || true
-          fi
-
-          echo "---- which fpm (after) ----"
-          command -v fpm || true
-          echo "---- fpm --version ----"
-          fpm --version || true
+          # в контейнере обычно root, sudo может отсутствовать
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends \
+            rpm-build rpm \
+            git tar gzip xz \
+            make gcc gcc-c++ \
+            findutils coreutils
 
       - name: Locate .spec file
         id: findspec
+        shell: bash
         run: |
           set -euo pipefail
-          SPEC_PATH=$(find . -maxdepth 4 -type f -name "*.spec" | head -n1 || true)
+          SPEC_PATH="$(find . -maxdepth 6 -type f -name '*.spec' | head -n1 || true)"
           if [ -z "$SPEC_PATH" ]; then
-            echo "No .spec file found in repository. Will fallback to scripts/build-altlinux.sh" >&2
-            echo "spec=" >> $GITHUB_OUTPUT
-          else
-            echo "spec=$SPEC_PATH" >> $GITHUB_OUTPUT
+            echo "ERROR: No .spec file found in repository" >&2
+            exit 1
+          fi
+          echo "spec=$SPEC_PATH" >> "$GITHUB_OUTPUT"
+          echo "Using spec: $SPEC_PATH"
+
+      - name: Prepare rpmbuild tree (fixed topdir)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOPDIR="$GITHUB_WORKSPACE/rpmbuild"
+          mkdir -p "$TOPDIR"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
+          echo "%_topdir $TOPDIR" > "$HOME/.rpmmacros"
+          echo "TOPDIR=$TOPDIR" >> "$GITHUB_ENV"
+
+      - name: Create Source0 tarball from current commit (name from spec if possible)
+        shell: bash
+        run: |
+          set -euo pipefail
+          SPEC="${{ steps.findspec.outputs.spec }}"
+          TOPDIR="$TOPDIR"
+
+          # Пытаемся аккуратно получить Name/Version/Source0 через rpmspec (если доступен)
+          if command -v rpmspec >/dev/null 2>&1; then
+            RESOLVED="$(rpmspec -P "$SPEC" || true)"
+            NAME="$(printf '%s\n' "$RESOLVED" | awk -F': *' '/^Name:/ {print $2; exit}')"
+            VER="$(printf '%s\n' "$RESOLVED" | awk -F': *' '/^Version:/ {print $2; exit}')"
+            SRC0="$(printf '%s\n' "$RESOLVED" | awk -F': *' '/^Source0:/ {print $2; exit}')"
           fi
 
-      - name: Prepare rpmbuild tree
-        run: |
-          echo "%_topdir $HOME/rpmbuild" > ~/.rpmmacros
-          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS ~/rpmbuild/BUILD || true
+          # Fallback: если rpmspec нет/не сработал — берём name/version из package.json
+          if [ -z "${NAME:-}" ] || [ -z "${VER:-}" ]; then
+            NAME="$(node -p "require('./package.json').name")"
+            VER="$(node -p "require('./package.json').version")"
+            VER="$(echo "$VER" | sed 's/-.*$//')"
+          fi
 
-      - name: Create source tarball from current commit
-        if: steps.findspec.outputs.spec != ''
-        run: |
-          set -euo pipefail
-          FULL_VERSION=$(node -p "require('./package.json').version")
-          PKG_NAME=$(node -p "require('./package.json').name")
-          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
-          TAR_NAME=${PKG_NAME}-${PKG_VERSION}.tar.gz
-          git archive --format=tar.gz --prefix=${PKG_NAME}-${PKG_VERSION}/ -o ~/rpmbuild/SOURCES/${TAR_NAME} HEAD
+          # Имя tarball: если Source0 в spec задан как что-то вроде %{name}-%{version}.tar.gz,
+          # то мы делаем стандартное NAME-VER.tar.gz. Если Source0 реальный файл — берём basename.
+          if [ -n "${SRC0:-}" ]; then
+            TAR_BASENAME="$(basename "$SRC0")"
+          else
+            TAR_BASENAME="${NAME}-${VER}.tar.gz"
+          fi
+
+          echo "NAME=$NAME"
+          echo "VER=$VER"
+          echo "TAR_BASENAME=$TAR_BASENAME"
+
+          git archive --format=tar.gz --prefix="${NAME}-${VER}/" \
+            -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
+
+          ls -lah "$TOPDIR/SOURCES"
 
       - name: Copy spec into SPECS
-        if: steps.findspec.outputs.spec != ''
+        shell: bash
         run: |
           set -euo pipefail
-          SPEC_PATH=${{ steps.findspec.outputs.spec }}
-          cp "$SPEC_PATH" ~/rpmbuild/SPECS/
+          SPEC="${{ steps.findspec.outputs.spec }}"
+          cp -v "$SPEC" "$TOPDIR/SPECS/"
+          ls -lah "$TOPDIR/SPECS"
 
-      - name: Install npm deps and build (for rpm sources)
+      - name: Install npm deps and build (only if your spec expects built sources)
+        shell: bash
         run: |
           set -euo pipefail
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm run build
 
-      - name: Build RPM via rpmbuild
-        if: steps.findspec.outputs.spec != ''
-        run: |
-          set -xuo pipefail
-          SPEC_FILE=$(basename "${{ steps.findspec.outputs.spec }}")
-          rpmbuild --define "_topdir $HOME/rpmbuild" -ba ~/rpmbuild/SPECS/${SPEC_FILE}
-
-      - name: AltLinux diagnostics
-        if: steps.findspec.outputs.spec == ''
-        run: |
-          echo "WHOAMI: $(whoami)" || true
-          echo "PWD: $(pwd)" || true
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" || true
-          ls -lah . || true
-
-      - name: Fallback - run scripts/build-altlinux.sh as builder
-        if: steps.findspec.outputs.spec == ''
+      - name: Build RPM via rpmbuild (spec)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Running AltLinux fallback script as current user (avoid sudo/chown issues)"
-          cd "$GITHUB_WORKSPACE"
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-          npm run build
-          bash scripts/build-altlinux.sh
+          SPEC_FILE="$(basename "${{ steps.findspec.outputs.spec }}")"
+          rpmbuild --define "_topdir $TOPDIR" -ba "$TOPDIR/SPECS/$SPEC_FILE"
 
       - name: Collect AltLinux RPMs
+        shell: bash
         run: |
           set -euo pipefail
-          ART_DIR="${{ env.ARTIFACT_DIR }}"
-          mkdir -p "$ART_DIR/altlinux"
-
-          # Collect from rpmbuild (if present)
-          if [ -d "$HOME/rpmbuild" ]; then
-            find "$HOME/rpmbuild" -type f -name '*.rpm' -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/altlinux/" || true
-            find "$HOME/rpmbuild" -type f -name '*.src.rpm' -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/altlinux/" || true
-          fi
-
-          # Also collect any RPMs produced in release/
-          if [ -d "release" ]; then
-            find release -type f -name '*.rpm' -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/altlinux/" || true
-          fi
-
-          echo "Artifacts in $ART_DIR/altlinux:" 
-          ls -lah "$ART_DIR/altlinux" || true
+          mkdir -p "$ARTIFACT_DIR/altlinux"
+          find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print -exec cp -v {} "$ARTIFACT_DIR/altlinux/" \;
+          echo "Collected:"
+          ls -lah "$ARTIFACT_DIR/altlinux"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: altlinux-rpm
-          path: ${{ env.ARTIFACT_DIR }}/altlinux/**
+          path: artifacts/altlinux/*
+          if-no-files-found: error
           retention-days: 30
+      
 
   windows_exe_msi:
     name: Windows - exe & msi
@@ -310,7 +297,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -338,7 +325,7 @@ jobs:
           Get-ChildItem -Path $env:ARTIFACT_DIR\windows -Recurse | Select-Object FullName,Length
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: windows-exe-msi
           path: ${{ env.ARTIFACT_DIR }}/windows/**
@@ -353,7 +340,7 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           path: downloaded-artifacts
 
