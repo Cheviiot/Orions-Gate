@@ -124,6 +124,34 @@ jobs:
             fi
           fi
 
+          # --- Workaround: rpm-build-nodejs may be absent too (some mirrors/sets) ---
+          if grep -qiE '^[[:space:]]*BuildRequires\([[:space:]]*pre[[:space:]]*\):[[:space:]]*rpm-build-nodejs([[:space:]]|$)' "$SPEC_REAL"; then
+            if apt-cache show rpm-build-nodejs >/dev/null 2>&1; then
+              echo "Installing rpm-build-nodejs (present in repo)"
+              apt-get install -y rpm-build-nodejs
+            else
+              echo "WARN: rpm-build-nodejs not found in AltLinux P11 repos in this container."
+              echo "      Patching spec copy to remove BuildRequires(pre): rpm-build-nodejs"
+              sed -i -E '/^[[:space:]]*BuildRequires\([[:space:]]*pre[[:space:]]*\):[[:space:]]*rpm-build-nodejs([[:space:]]|$)/Id' "$SPEC_REAL"
+            fi
+          fi
+
+          # --- Workaround: nodejs-npm and git-core naming differs in ALT container ---
+          # If nodejs-npm doesn't exist, replace with npm (package name in p11 base repos).
+          if grep -qiE '^[[:space:]]*BuildRequires:[[:space:]]*nodejs-npm([[:space:]]|$)' "$SPEC_REAL"; then
+            if ! apt-cache show nodejs-npm >/dev/null 2>&1; then
+              echo "WARN: nodejs-npm not found. Patching spec copy: BuildRequires: nodejs-npm -> npm"
+              sed -i -E 's/^[[:space:]]*BuildRequires:[[:space:]]*nodejs-npm([[:space:]]|$)/BuildRequires:  npm/Ig' "$SPEC_REAL"
+            fi
+          fi
+          # If git-core doesn't exist, replace with git.
+          if grep -qiE '^[[:space:]]*BuildRequires:[[:space:]]*git-core([[:space:]]|$)' "$SPEC_REAL"; then
+            if ! apt-cache show git-core >/dev/null 2>&1; then
+              echo "WARN: git-core not found. Patching spec copy: BuildRequires: git-core -> git"
+              sed -i -E 's/^[[:space:]]*BuildRequires:[[:space:]]*git-core([[:space:]]|$)/BuildRequires:  git/Ig' "$SPEC_REAL"
+            fi
+          fi
+
           # --- Install BuildRequires from spec (best-effort fail-fast) ---
           echo "== Installing BuildRequires from spec =="
           # Extract tokens from BuildRequires/BuildRequires(pre) lines (ignore version operators / numbers)
@@ -145,12 +173,28 @@ jobs:
           if [ -n "$REQS" ]; then
             # shellcheck disable=SC2086
             for pkg in $REQS; do
-              # we already handled rpm-build-electron above (either installed or removed)
-              if [ "$pkg" = "rpm-build-electron" ]; then
+              # already handled (installed or removed/patched)
+              if [ "$pkg" = "rpm-build-electron" ] || [ "$pkg" = "rpm-build-nodejs" ]; then
                 continue
               fi
-              echo "  -> $pkg"
-              apt-get install -y "$pkg"
+
+              # mapping for ALT naming differences
+              case "$pkg" in
+                nodejs-npm) pkg2="npm" ;;
+                git-core) pkg2="git" ;;
+                *) pkg2="$pkg" ;;
+              esac
+
+              echo "  -> $pkg (install: $pkg2)"
+
+              if apt-cache show "$pkg2" >/dev/null 2>&1; then
+                apt-get install -y "$pkg2"
+              else
+                echo "ERROR: BuildRequires package not found in repos: $pkg2 (from $pkg)" >&2
+                echo "apt-cache search snippet for '$pkg2':" >&2
+                apt-cache search "$pkg2" | head -n 50 || true
+                exit 1
+              fi
             done
           fi
 
