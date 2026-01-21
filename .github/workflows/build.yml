@@ -25,8 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
 
       - name: Install system deps
         run: |
@@ -120,13 +118,14 @@ jobs:
       - name: Locate .spec file
         id: findspec
         run: |
-          set -e
+          set -euo pipefail
           SPEC_PATH=$(find . -maxdepth 4 -type f -name "*.spec" | head -n1 || true)
           if [ -z "$SPEC_PATH" ]; then
-            echo "No .spec file found in repository. If you have a .spec outside repo, provide its path or continue to use scripts/build-altlinux.sh" >&2
-            exit 1
+            echo "No .spec file found in repository. Will fallback to scripts/build-altlinux.sh" >&2
+            echo "spec=" >> $GITHUB_OUTPUT
+          else
+            echo "spec=$SPEC_PATH" >> $GITHUB_OUTPUT
           fi
-          echo "spec=$SPEC_PATH" >> $GITHUB_OUTPUT
 
       - name: Prepare rpmbuild tree
         run: |
@@ -135,7 +134,9 @@ jobs:
           mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS ~/rpmbuild/BUILD
 
       - name: Create source tarball from current commit
+        if: steps.findspec.outputs.spec != ''
         run: |
+          set -euo pipefail
           FULL_VERSION=$(node -p "require('./package.json').version")
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
@@ -143,20 +144,35 @@ jobs:
           git archive --format=tar.gz --prefix=${PKG_NAME}-${PKG_VERSION}/ -o ~/rpmbuild/SOURCES/${TAR_NAME} HEAD
 
       - name: Copy spec into SPECS
+        if: steps.findspec.outputs.spec != ''
         run: |
+          set -euo pipefail
           SPEC_PATH=${{ steps.findspec.outputs.spec }}
           cp "$SPEC_PATH" ~/rpmbuild/SPECS/
 
       - name: Install npm deps and build (for rpm sources)
         run: |
+          set -euo pipefail
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
           npm run build
 
       - name: Build RPM via rpmbuild
+        if: steps.findspec.outputs.spec != ''
         run: |
-          set -x
+          set -xuo pipefail
           SPEC_FILE=$(basename "${{ steps.findspec.outputs.spec }}")
           rpmbuild --define "_topdir $HOME/rpmbuild" -ba ~/rpmbuild/SPECS/${SPEC_FILE}
+
+      - name: Fallback - run scripts/build-altlinux.sh as builder
+        if: steps.findspec.outputs.spec == ''
+        run: |
+          set -euo pipefail
+          useradd -m builder || true
+          chown -R builder:builder $PWD || true
+          printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+          sudo -u builder bash -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build'
+          sudo -u builder bash -lc 'bash scripts/build-altlinux.sh'
 
       - name: Collect AltLinux RPMs
         run: |
@@ -184,7 +200,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: package.json
 
       - name: Install project dependencies
         run: |
