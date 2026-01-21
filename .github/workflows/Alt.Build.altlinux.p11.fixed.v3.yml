@@ -167,6 +167,17 @@ jobs:
             fi
           fi
 
+          # 3) npm ci requires package-lock.json; your repo may not have it.
+          # Patch spec copy: replace `npm ci --production` with conditional:
+          # if package-lock exists -> npm ci --omit=dev; else -> npm install --omit=dev
+          if grep -qE '^[[:space:]]*npm[[:space:]]+ci([[:space:]]+--production)?([[:space:]]|\s)*$' "$SPEC_REAL"; then
+            echo "Patching spec: npm ci -> conditional ci/install (handles missing package-lock.json)"
+            sed -i -E \
+              's/^[[:space:]]*npm[[:space:]]+ci([[:space:]]+--production)?[[:space:]]*$/if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi/I' \
+              "$SPEC_REAL"
+          fi
+
+
           # --- Install BuildRequires from patched spec (as root) ---
           echo "== Installing BuildRequires from spec =="
           REQS="$(
