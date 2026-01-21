@@ -41,8 +41,7 @@ jobs:
 
           docker pull alt:p11
 
-          docker run --rm -i \
-          git config --global --add safe.directory /work
+          docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
             -e SPEC_INPUT="${SPEC_INPUT:-}" \
@@ -97,6 +96,9 @@ jobs:
           fi
 
           echo "Using spec: $SPEC_PATH"
+
+          # Git 2.35+ safety: repo is mounted from host, mark as safe
+          git config --global --add safe.directory /work
 
           # --- rpmbuild tree ---
           TOPDIR="/work/rpmbuild"
@@ -297,24 +299,3 @@ jobs:
           path: ${{ env.ARTIFACT_DIR }}/altlinux/**
           if-no-files-found: error
           retention-days: 30
-
-  create_release:
-    name: Create GitHub Release (on tag)
-    needs: [altlinux_rpm]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: downloaded-artifacts
-
-      - name: Create GitHub Release and upload assets
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            downloaded-artifacts/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
