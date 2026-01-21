@@ -1,5 +1,6 @@
 #!/bin/bash
-# Build RPM package for Alt Linux
+#!/bin/bash
+# Build RPM package for Alt Linux (orions-gate)
 
 set -e
 
@@ -30,9 +31,9 @@ command -v rpmbuild &> /dev/null || { echo -e "${RED}✗ rpmbuild is required. I
 echo -e "${GREEN}✓ All prerequisites met${NC}"
 
 # Get version from package.json
-FULL_VERSION=$(node -p "require('./package.json').version")
-PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
-PKG_PRERELEASE=$(echo "$FULL_VERSION" | grep -oP '(?<=-).+' || echo "")
+FULL_VERSION="1.0.0-alpha.1"
+PKG_VERSION="1.0.0"
+PKG_PRERELEASE="alpha.1"
 
 # Determine release number
 if [ -z "$PKG_PRERELEASE" ]; then
@@ -87,12 +88,13 @@ cat > "${BUILD_DIR}/orions-gate.desktop" << 'EOF'
 [Desktop Entry]
 Type=Application
 Name=Orion's Gate
-Comment=Modern YouTube client with DPI bypass and privacy features
+Comment=Modern YouTube client with DPI bypass, privacy, and VOT integration
 Exec=/usr/bin/orions-gate %U
 Icon=orions-gate
 Terminal=false
 Categories=Utility;Network;
 StartupWMClass=Orions-Gate
+X-AppStream-Id=io.github.cheviiot.OrionsGate.desktop
 EOF
 
 # Create CLI wrapper to place in /usr/bin
@@ -126,19 +128,20 @@ cp "${BUILD_DIR}/orions-gate.desktop" "${TEMP_STAGING}/usr/share/applications/"
 # Build the RPM
 $FPM -s dir -t rpm -f \
     -n orions-gate \
-    -v "${PKG_VERSION}" \
+    -v "1.0.0-alpha.1" \
     --rpm-os linux \
     --rpm-dist alt \
-    --iteration "${PKG_RELEASE}" \
+    --iteration "alt0.alpha1" \
     --epoch 1 \
-    --description "Orion's Gate - Transparent proxy web browser with VOT integration" \
-    --maintainer "Orion's Gate Team <6terio9@vk.com>" \
+    --description "Orion's Gate — Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and VOT integration." \
+    --maintainer "Cheviiot" \
+    --vendor "Cheviiot" \
     --url "https://github.com/Cheviiot/Orions-Gate" \
     --license MIT \
     --after-install "$(pwd)/scripts/postinst.sh" \
     --after-remove "$(pwd)/scripts/postrm.sh" \
     -C "${TEMP_STAGING}" \
-    -p "$(pwd)/release/orions-gate-${PKG_VERSION}-${PKG_RELEASE}.alt.x86_64.rpm" \
+    -p "$(pwd)/release/orions-gate-1.0.0-alpha.1-alt0.alpha1.x86_64.rpm" \
     .
 
 # Locate resulting RPM file and report

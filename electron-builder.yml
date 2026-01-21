@@ -1,4 +1,4 @@
-appId: com.orionsgate.app
+appId: io.github.cheviiot.OrionsGate
 productName: Orion's Gate
 publish: []
 detectUpdateChannel: false
@@ -16,7 +16,7 @@ extraResources:
 asarUnpack:
   - "**/*.node"
   - "**/assets/vot/**"
-artifactName: "Orions-Gate-${version}-${os}-${arch}.${ext}"
+artifactName: "orions-gate-${version}-${os}-${arch}.${ext}"
 mac:
   target: dmg
   icon: resources/icon.icns
@@ -33,16 +33,20 @@ linux:
     - AppImage
   desktop:
     Name: Orion's Gate
-    Comment: Modern YouTube client with DPI bypass and privacy features
+    Comment: Modern YouTube client with DPI bypass, privacy, and VOT integration
     Keywords: youtube;video;privacy;streaming
     Categories: Utility;Network;
-  executableName: Orions-Gate
+    Icon: orions-gate
+    Exec: orions-gate %U
+    StartupWMClass: Orion's Gate
+    X-AppStream-Id: io.github.cheviiot.OrionsGate.desktop
+  executableName: orions-gate
 
 rpm:
-  artifactName: "${productName}-${version}.${arch}.rpm"
+  artifactName: "orions-gate-${version}.${arch}.rpm"
 
 deb:
-  artifactName: "${productName}-${version}.${arch}.deb"
+  artifactName: "orions-gate-${version}.${arch}.deb"
 
 appImage:
-  artifactName: "${productName}-${version}.${arch}.AppImage"
+  artifactName: "orions-gate-${version}.${arch}.AppImage"

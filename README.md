@@ -1,6 +1,7 @@
+
 # Orion's Gate
 
-![Orion's Gate Banner](https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/assets/banner.png)
+![Orion's Gate Banner](https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/resources/banner.png)
 
 > **Modern YouTube client for Linux/Windows with DPI bypass, ad blocking, privacy, and beautiful overlay UI.**
 
@@ -60,7 +61,7 @@ npm start
   bash scripts/build-altlinux.sh
   ```
 
-Artifacts are placed in the `release/` directory.
+All installers and artifacts are placed in the `release/` directory. The binary is always named `orions-gate`, desktop integration uses `orions-gate.desktop`, and icons are installed as `orions-gate` in hicolor theme.
 
 ---
 
@@ -93,23 +94,27 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/assets/vot/vot.user.js.png" width="400" alt="Orion's Gate Screenshot"/>
-</p>
-│   │   ├── components/   # FAB, Settings, Search
-│   │   ├── state/        # Zustand stores
-│   │   ├── locales/      # i18n (en, ru)
-│   │   └── App.tsx       # Root component
-│   └── shared/           # Shared types and utils
-│       ├── api.ts        # OrionBridge types
-│       └── settings.ts   # Settings schema (Zod)
-├── assets/               # VOT assets
-├── resources/            # Icons/resources for packaging
-├── public/               # demergi.js
-├── scripts/              # Build/icon scripts
-├── tests/                # Playwright E2E
-├── dist/                 # Build output
-└── release/              # Installers
+
+## Project Structure
+```
+src/
+    main/         # Electron main process
+    preload/      # Preload scripts (window.orion, VOT)
+    renderer/     # React UI, components, localization
+        components/ # FAB, Settings, Search, Overlay
+        state/      # Zustand stores
+        locales/    # i18n (en, ru, de, fr)
+        App.tsx     # Root component
+    shared/       # Shared types and utils
+        api.ts      # OrionBridge types
+        settings.ts # Settings schema (Zod)
+assets/         # VOT assets
+resources/      # Icons/resources for packaging
+public/         # demergi.js
+scripts/        # Build/icon scripts
+tests/          # Playwright E2E
+dist/           # Build output
+release/        # Installers
 ```
 
 ## Configuration Files

@@ -1,6 +1,7 @@
+
 # Orion's Gate
 
-![Orion's Gate Banner](https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/assets/banner.png)
+![Orion's Gate Banner](https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/resources/banner.png)
 
 > **Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, красивый оверлей-интерфейс.**
 
@@ -61,7 +62,7 @@ npm start
     bash scripts/build-altlinux.sh
     ```
 
-Артефакты появляются в папке `release/`.
+Все установщики и артефакты появляются в папке `release/`. Бинарник всегда называется `orions-gate`, desktop-интеграция использует `orions-gate.desktop`, иконки устанавливаются как `orions-gate` в теме hicolor.
 
 ---
 
@@ -94,23 +95,28 @@ MIT. См. [LICENSE](LICENSE).
 
 ---
 
-<p align="center">
-    <img src="https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/assets/vot/vot.user.js.png" width="400" alt="Orion's Gate Screenshot"/>
-</p>
-│   │   ├── components/   # FAB, Settings, Search
-│   │   ├── state/        # Zustand сторы
-│   │   ├── locales/      # i18n (en, ru)
-│   │   └── App.tsx       # Корневой компонент
-│   └── shared/           # Общие типы и утилиты
-│       ├── api.ts        # Типы OrionBridge
-│       └── settings.ts   # Схема настроек (Zod)
-├── assets/               # VOT ассеты
-├── resources/            # Иконки/ресурсы для упаковки
-├── public/               # demergi.js
-├── scripts/              # Скрипты сборки и иконок
-├── tests/                # Playwright E2E
-├── dist/                 # Результат сборки
-└── release/              # Инсталляторы
+
+
+## Структура проекта
+```
+src/
+    main/         # Главный процесс Electron
+    preload/      # Preload-скрипты (window.orion, VOT)
+    renderer/     # React-интерфейс, компоненты, локализация
+        components/ # FAB, Settings, Search, Overlay
+        state/      # Zustand сторы
+        locales/    # i18n (en, ru, de, fr)
+        App.tsx     # Корневой компонент
+    shared/       # Общие типы и утилиты
+        api.ts      # Типы OrionBridge
+        settings.ts # Схема настроек (Zod)
+assets/         # VOT ассеты
+resources/      # Иконки/ресурсы для упаковки
+public/         # demergi.js
+scripts/        # Скрипты сборки и иконок
+tests/          # Playwright E2E
+dist/           # Результат сборки
+release/        # Инсталляторы
 ```
 
 ## Конфигурационные файлы
