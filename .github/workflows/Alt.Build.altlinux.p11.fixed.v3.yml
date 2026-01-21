@@ -217,17 +217,23 @@ jobs:
             exit 1
           fi
 
-          # Source0: usually %{name}-%{version}.tar.gz
+          # Source0 filename must match what rpmbuild will look for after macro expansion.
+          # Expand %{name}/%{version} and then validate we got a sane tarball name.
           TAR_BASENAME="${NAME}-${VERSION}.tar.gz"
           if [ -n "${SRC0_RAW:-}" ] && ! echo "$SRC0_RAW" | grep -qE '^[a-zA-Z]+://'; then
-            tmp="$SRC0_RAW"
-            tmp="${tmp//%{name}/$NAME}"
-            tmp="${tmp//%{version}/$VERSION}"
+            tmp="$(printf '%s' "$SRC0_RAW" | sed -e "s/%{name}/${NAME}/g" -e "s/%{version}/${VERSION}/g" | tr -d '\r')"
             tmp="$(basename "$tmp")"
-            # if macros left, fallback
-            if ! echo "$tmp" | grep -q '%{' ; then
-              TAR_BASENAME="$tmp"
-            fi
+            # Defensive: strip stray trailing braces that sometimes sneak in
+            while [ "${tmp: -1}" = "}" ]; do tmp="${tmp%}"; done
+
+            case "$tmp" in
+              *.tar.gz|*.tgz|*.tar.xz|*.tar.bz2|*.tar)
+                TAR_BASENAME="$tmp"
+                ;;
+              *)
+                echo "WARN: Source0 after expansion looks suspicious: '$tmp' — using default '${NAME}-${VERSION}.tar.gz'"
+                ;;
+            esac
           fi
 
           echo "Name=$NAME"
