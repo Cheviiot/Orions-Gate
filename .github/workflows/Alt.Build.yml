@@ -112,13 +112,31 @@ jobs:
               set -euo pipefail
 
               apt-get update
-              # База + node/npm (если проект требует) + типовые утилиты
+
+              # базовые зависимости + node/npm
               apt-get install -y \
-                rpm rpm-build \
-                git tar gzip xz \
-                make gcc gcc-c++ \
-                findutils coreutils \
-                node npm
+              rpm rpm-build \
+              git tar gzip xz \
+              make gcc gcc-c++ \
+              findutils coreutils \
+              node npm
+              
+              # Ruby + gem (в ALT названия могут отличаться — пробуем варианты)
+              if ! command -v gem >/dev/null 2>&1; then
+              apt-get install -y ruby rubygems || apt-get install -y ruby gem
+              else
+              apt-get install -y ruby || true
+              fi
+              
+              # поставить fpm (мы в контейнере обычно root, поэтому без sudo)
+              gem install --no-document fpm
+              
+              # гарантируем, что fpm в PATH
+              GEM_BINDIR="$(ruby -rrubygems -e 'print Gem.bindir')"
+              export PATH="$GEM_BINDIR:$PATH"
+              command -v fpm
+              fpm --version
+
 
               echo "MODE=$MODE"
               echo "SPEC_PATH=$SPEC_PATH"
