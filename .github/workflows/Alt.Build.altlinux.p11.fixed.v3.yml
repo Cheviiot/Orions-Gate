@@ -51,8 +51,6 @@ jobs:
           echo "=== AltLinux container ==="
           cat /etc/*release || true
 
-          # Git safety: mounted repo ownership differs
-          git config --global --add safe.directory /work
 
           apt-get update
 
@@ -69,6 +67,9 @@ jobs:
 
           # Node toolchain (some specs build JS inside %build)
           apt-get install -y node npm || true
+
+          # Git safety (Git 2.35+): repo is mounted from host, mark as safe
+          git config --global --add safe.directory /work
 
           # --- Detect spec (prefer input, then *.spec, then *.spec.example) ---
           SPEC_PATH=""
