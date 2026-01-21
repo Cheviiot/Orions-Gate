@@ -77,8 +77,21 @@ jobs:
 
       - name: Install system deps (dnf)
         run: |
-          sudo dnf -y update
-          sudo dnf install -y --setopt=install_weak_deps=False nodejs npm rpmdevtools gcc-c++ make python3 xz ImageMagick || true
+          dnf -y update || true
+          # ensure libcrypt (libcrypt.so.1) is available for bundled fpm ruby
+          dnf install -y --setopt=install_weak_deps=False nodejs npm rpmdevtools gcc-c++ make python3 xz ImageMagick libxcrypt libxcrypt-compat || true
+
+      - name: DNF diagnostics
+        run: |
+          echo "WHOAMI: $(whoami)"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo "ARTIFACT_DIR=$ARTIFACT_DIR"
+          echo "Which dnf:"; which dnf || true
+          echo "dnf version:"; dnf --version || true
+          echo "rpm version:"; rpm --version || true
+          echo "node version:"; node -v || true
+          echo "npm version:"; npm -v || true
+          echo "Listing / and workspace root:"; ls -lah / || true; ls -lah $GITHUB_WORKSPACE || true
 
       - name: Install project dependencies
         run: |
@@ -107,11 +120,56 @@ jobs:
           echo "List any rpms in entire workspace:" 
           find . -type f -name "*.rpm" -print || true
 
+      - name: Collect Fedora RPMs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ART_DIR="${{ env.ARTIFACT_DIR }}"
+          mkdir -p "$ART_DIR/fedora"
+
+          # Find RPMs in workspace excluding node_modules
+          find . -path './node_modules' -prune -o -type f -name '*.rpm' -print > /tmp/workspace-rpms.txt || true
+
+          # Also check $HOME/rpmbuild if present
+          if [ -d "$HOME/rpmbuild" ]; then
+            find "$HOME/rpmbuild" -type f -name '*.rpm' -print >> /tmp/workspace-rpms.txt || true
+          fi
+
+          # Normalize (remove empty lines) and unique
+          awk 'NF' /tmp/workspace-rpms.txt | sort -u > /tmp/found-rpms.txt || true
+
+          if [ ! -s /tmp/found-rpms.txt ]; then
+            echo "ERROR: no RPM files found in workspace or $HOME/rpmbuild"
+            echo "--- Workspace top-level ---"
+            ls -lah . || true
+            echo "--- release/ ---"
+            ls -lah release || true
+            if [ -d "$HOME/rpmbuild" ]; then
+              echo "--- $HOME/rpmbuild ---"
+              ls -lah "$HOME/rpmbuild" || true
+            fi
+            echo "Full find under workspace (for debugging):"
+            find . -type f -print || true
+            exit 1
+          fi
+
+          echo "Found RPMs:" 
+          cat /tmp/found-rpms.txt
+
+          while IFS= read -r f; do
+            echo "Copying: $f -> $ART_DIR/fedora/"
+            cp -v "$f" "$ART_DIR/fedora/" || true
+          done < /tmp/found-rpms.txt
+
+          echo "Artifacts in $ART_DIR/fedora:" 
+          ls -lah "$ART_DIR/fedora" || true
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: fedora-rpm
-          path: ${{ env.ARTIFACT_DIR }}/fedora/**
+          path: ${{ env.ARTIFACT_DIR }}/fedora/*.rpm
+          if-no-files-found: error
           retention-days: 30
 
   altlinux_rpm:
@@ -190,8 +248,9 @@ jobs:
           sudo chown -R builder:builder $PWD || true
           echo "builder ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/builder > /dev/null
           sudo chmod 0440 /etc/sudoers.d/builder
-          sudo -u builder bash -lc 'cd "$GITHUB_WORKSPACE" && if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build'
-          sudo -u builder bash -lc 'cd "$GITHUB_WORKSPACE" && bash scripts/build-altlinux.sh'
+          # use outer-shell-expanded workspace path so sudo session sees a concrete path
+          sudo -u builder bash -lc "cd '$GITHUB_WORKSPACE' && if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build"
+          sudo -u builder bash -lc "cd '$GITHUB_WORKSPACE' && bash scripts/build-altlinux.sh"
 
       - name: Collect AltLinux RPMs
         run: |
