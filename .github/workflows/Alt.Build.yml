@@ -1,0 +1,195 @@
+name: AltLinux P11 - RPM
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [ main, master ]
+    tags: [ "v*" ]
+
+permissions:
+  contents: read
+
+env:
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  altlinux_rpm:
+    name: AltLinux P11 - RPM
+    runs-on: ubuntu-latest
+
+    # Вся сборка внутри ALT контейнера
+    container:
+      image: alt:p11
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install build tools (ALT)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # В контейнере часто root и без sudo
+          if command -v sudo >/dev/null 2>&1; then SUDO="sudo"; else SUDO=""; fi
+
+          $SUDO apt-get update
+          $SUDO apt-get install -y --no-install-recommends \
+            rpm rpm-build \
+            git tar gzip xz \
+            make gcc gcc-c++ \
+            findutils coreutils
+
+          rpm --version
+          rpmbuild --version
+
+      - name: Locate .spec file
+        id: findspec
+        shell: bash
+        run: |
+          set -euo pipefail
+          SPEC_PATH="$(find . -maxdepth 8 -type f -name '*.spec' | head -n 1 || true)"
+          if [ -z "$SPEC_PATH" ]; then
+            echo "ERROR: No .spec file found in repository." >&2
+            exit 1
+          fi
+          echo "spec=$SPEC_PATH" >> "$GITHUB_OUTPUT"
+          echo "Using spec: $SPEC_PATH"
+
+      - name: Prepare rpmbuild tree (fixed topdir)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOPDIR="$GITHUB_WORKSPACE/rpmbuild"
+          mkdir -p "$TOPDIR"/{BUILD,BUILDROOT,RPMS,SRPMS,SOURCES,SPECS}
+          echo "%_topdir $TOPDIR" > "$HOME/.rpmmacros"
+          echo "TOPDIR=$TOPDIR" >> "$GITHUB_ENV"
+          echo "TOPDIR is $TOPDIR"
+
+      - name: Create Source0 tarball from current commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          SPEC="${{ steps.findspec.outputs.spec }}"
+
+          # 1) Вытащим Name/Version из spec (первое совпадение)
+          NAME="$(awk -F': *' 'tolower($1)=="name" {print $2; exit}' "$SPEC" | tr -d '\r')"
+          VERSION="$(awk -F': *' 'tolower($1)=="version" {print $2; exit}' "$SPEC" | tr -d '\r')"
+
+          if [ -z "$NAME" ] || [ -z "$VERSION" ]; then
+            echo "ERROR: Cannot parse Name/Version from spec: $SPEC" >&2
+            exit 1
+          fi
+
+          # 2) Попробуем определить имя Source0 (если это локальный файл)
+          SRC0_RAW="$(awk -F': *' 'tolower($1)=="source0" {print $2; exit}' "$SPEC" | tr -d '\r' || true)"
+          TAR_BASENAME=""
+
+          if [ -n "${SRC0_RAW:-}" ] && ! echo "$SRC0_RAW" | grep -qE '^[a-zA-Z]+://'; then
+            # подстановка типовых макросов
+            TAR_BASENAME="$SRC0_RAW"
+            TAR_BASENAME="${TAR_BASENAME//%{name}/$NAME}"
+            TAR_BASENAME="${TAR_BASENAME//%{version}/$VERSION}"
+            TAR_BASENAME="${TAR_BASENAME//%{NAME}/$NAME}"
+            TAR_BASENAME="${TAR_BASENAME//%{VERSION}/$VERSION}"
+            TAR_BASENAME="$(basename "$TAR_BASENAME")"
+            # если остались макросы — fallback
+            if echo "$TAR_BASENAME" | grep -q '%{'; then
+              TAR_BASENAME=""
+            fi
+          fi
+
+          if [ -z "$TAR_BASENAME" ]; then
+            TAR_BASENAME="${NAME}-${VERSION}.tar.gz"
+          fi
+
+          echo "NAME=$NAME"
+          echo "VERSION=$VERSION"
+          echo "TAR_BASENAME=$TAR_BASENAME"
+
+          git archive --format=tar.gz --prefix="${NAME}-${VERSION}/" \
+            -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
+
+          ls -lah "$TOPDIR/SOURCES"
+
+      - name: Copy spec into SPECS
+        shell: bash
+        run: |
+          set -euo pipefail
+          SPEC="${{ steps.findspec.outputs.spec }}"
+          cp -v "$SPEC" "$TOPDIR/SPECS/"
+          ls -lah "$TOPDIR/SPECS"
+
+      - name: Build RPM via rpmbuild (spec)
+        shell: bash
+        run: |
+          set -euo pipefail
+          SPEC_FILE="$(basename "${{ steps.findspec.outputs.spec }}")"
+          rpmbuild --define "_topdir $TOPDIR" -ba "$TOPDIR/SPECS/$SPEC_FILE"
+
+      - name: Diagnostics (paths)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "WHOAMI: $(whoami)"
+          echo "PWD: $(pwd)"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo "TOPDIR=$TOPDIR"
+          echo "== ls workspace =="
+          ls -lah "$GITHUB_WORKSPACE" || true
+          echo "== ls release (if exists) =="
+          ls -lah "$GITHUB_WORKSPACE/release" || true
+          echo "== find RPMs in TOPDIR =="
+          find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print || true
+          echo "== find RPMs in HOME rpmbuild (if exists) =="
+          if [ -d "$HOME/rpmbuild" ]; then
+            find "$HOME/rpmbuild" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -print || true
+          fi
+
+      - name: Collect AltLinux RPMs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ARTIFACT_DIR/altlinux"
+
+          # 1) из fixed TOPDIR
+          if [ -d "$TOPDIR" ]; then
+            find "$TOPDIR" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -exec cp -v {} "$ARTIFACT_DIR/altlinux/" \;
+          fi
+
+          # 2) если вдруг spec/скрипт пишет в $HOME/rpmbuild
+          if [ -d "$HOME/rpmbuild" ]; then
+            find "$HOME/rpmbuild" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -exec cp -v {} "$ARTIFACT_DIR/altlinux/" \;
+          fi
+
+          # 3) если скрипты кладут в release/
+          if [ -d "$GITHUB_WORKSPACE/release" ]; then
+            find "$GITHUB_WORKSPACE/release" -type f \( -name "*.rpm" -o -name "*.src.rpm" \) -exec cp -v {} "$ARTIFACT_DIR/altlinux/" \;
+          fi
+
+          echo "== Collected =="
+          ls -lah "$ARTIFACT_DIR/altlinux"
+
+          # Жёсткий контроль: без rpm — FAIL
+          if ! ls "$ARTIFACT_DIR/altlinux/"*.rpm >/dev/null 2>&1 && ! ls "$ARTIFACT_DIR/altlinux/"*.src.rpm >/dev/null 2>&1; then
+            echo "ERROR: RPM not produced. Nothing to upload." >&2
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: altlinux-rpm
+          path: artifacts/altlinux/*
+          if-no-files-found: error
+          retention-days: 30
+

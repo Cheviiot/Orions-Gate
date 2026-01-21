@@ -222,10 +222,10 @@ const SettingsOverlay = ({ onClose }: Props) => {
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded-full p-2 transition-colors hover:bg-[var(--yt-hover)]"
+              className="rounded-full p-2 transition-colors hover:bg-[var(--yt-hover)] flex items-center justify-center"
               aria-label="Close"
             >
-              <X className="h-6 w-6" />
+              <X className="h-6 w-6 block" />
             </button>
           </div>
         </div>
