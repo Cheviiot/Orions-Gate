@@ -237,7 +237,27 @@ jobs:
           echo "Source2(raw)=$SRC2_RAW"
 
           echo "== Create Source0 tarball from current commit =="
-          git -C /work archive --format=tar.gz --prefix="${NAME}-${VERSION}/" -o "$TOPDIR/SOURCES/$TAR_BASENAME" HEAD
+          SRC_TMP="$(mktemp -d)"
+          mkdir -p "$SRC_TMP/${NAME}-${VERSION}"
+          # Copy working tree to a versioned top-level directory (exclude VCS + CI outputs)
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude="${ARTIFACT_DIR}" \
+            --exclude='rpmbuild' \
+            /work/ "$SRC_TMP/${NAME}-${VERSION}/"
+
+          tar -C "$SRC_TMP" -czf "$TOPDIR/SOURCES/$TAR_BASENAME" "${NAME}-${VERSION}"
+          rm -rf "$SRC_TMP"
+
+          if [ ! -f "$TOPDIR/SOURCES/$TAR_BASENAME" ]; then
+            echo "ERROR: Source0 tarball was not created: $TOPDIR/SOURCES/$TAR_BASENAME" >&2
+            echo "Debug: ls -lah $TOPDIR/SOURCES" >&2
+            ls -lah "$TOPDIR/SOURCES" || true
+            echo "Debug: ls -lah /work" >&2
+            ls -lah /work | head -n 200 || true
+            exit 1
+          fi
+          ls -lah "$TOPDIR/SOURCES/$TAR_BASENAME"
 
           echo "== Provide Source1/Source2 if needed =="
           # For your spec: Source1=%{name}.desktop, Source2=%{name}.png
