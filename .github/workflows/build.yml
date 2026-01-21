@@ -153,7 +153,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-deb-appimage
+          name: ubuntu-deb-appimage_rpm
           path: ${{ env.ARTIFACT_DIR }}/ubuntu/**
           retention-days: 30
 
