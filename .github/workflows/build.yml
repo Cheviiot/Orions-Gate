@@ -1,0 +1,209 @@
+name: Build Release Artifacts
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+env:
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  ubuntu_deb_appimage:
+    name: Ubuntu - deb & AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libx11-dev libxext-dev libxkbfile-dev libappindicator3-dev fonts-liberation xdg-utils imagemagick xvfb
+
+      - name: Install project dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Package deb & AppImage
+        run: |
+          npm run make:deb || npx electron-builder --linux deb --config electron-builder.yml
+          npm run make:appimage || npx electron-builder --linux AppImage --config electron-builder.yml
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p $ARTIFACT_DIR/ubuntu
+          cp -v release/*.{deb,AppImage} $ARTIFACT_DIR/ubuntu/ || true
+          ls -lah $ARTIFACT_DIR || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-deb-appimage
+          path: ${{ env.ARTIFACT_DIR }}/ubuntu/**
+          retention-days: 30
+
+  fedora_rpm:
+    name: Fedora - RPM
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install system deps (dnf)
+        run: |
+          sudo dnf -y update
+          sudo dnf install -y --setopt=install_weak_deps=False nodejs npm rpmdevtools gcc-c++ make python3 xz ImageMagick || true
+
+      - name: Install project dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Package RPM (electron-builder)
+        run: |
+          mkdir -p $ARTIFACT_DIR/fedora
+          npx electron-builder --linux rpm --x64 --config electron-builder.yml || true
+          cp -v release/*.rpm $ARTIFACT_DIR/fedora/ || true
+          ls -lah $ARTIFACT_DIR || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fedora-rpm
+          path: ${{ env.ARTIFACT_DIR }}/fedora/**
+          retention-days: 30
+
+  altlinux_rpm:
+    name: AltLinux P11 - RPM (use existing script)
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/altlinux/base:p11
+      options: --user root
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies (Alt/apt)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl sudo git rpm-build rpmlint make gcc g++ python3 nodejs npm xz-utils fakeroot ruby ruby-dev build-essential imagemagick
+          gem install --no-document fpm || true
+          # ensure script's hardcoded FPM path exists
+          if [ -x "$(which fpm)" ]; then mkdir -p /usr/lib/ruby/bin || true; ln -sf "$(which fpm)" /usr/lib/ruby/bin/fpm || true; fi
+
+      - name: Create builder user
+        run: |
+          useradd -m builder || true
+          chown -R builder:builder $PWD || true
+          printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+
+      - name: Install project dependencies as builder
+        run: sudo -u builder bash -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi'
+
+      - name: Build application as builder
+        run: sudo -u builder npm run build
+
+      - name: Run AltLinux packaging script as builder
+        run: |
+          sudo -u builder bash -lc 'bash scripts/build-altlinux.sh'
+
+      - name: Collect AltLinux RPMs
+        run: |
+          mkdir -p $ARTIFACT_DIR/altlinux
+          cp -v release/*.rpm $ARTIFACT_DIR/altlinux/ || true
+          cp -v /home/builder/rpmbuild/RPMS/**/*.rpm $ARTIFACT_DIR/altlinux/ 2>/dev/null || true
+          ls -lah $ARTIFACT_DIR || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: altlinux-rpm
+          path: ${{ env.ARTIFACT_DIR }}/altlinux/**
+          retention-days: 30
+
+  windows_exe_msi:
+    name: Windows - exe & msi
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install project dependencies
+        run: |
+          if (Test-Path package-lock.json) { npm ci } else { npm install }
+
+      - name: Build
+        run: npm run build
+
+      - name: Package Windows installers
+        run: |
+          npx electron-builder --win nsis msi --config electron-builder.yml || true
+
+      - name: Collect Windows artifacts
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:ARTIFACT_DIR\windows | Out-Null
+          Copy-Item -Path release\* -Destination $env:ARTIFACT_DIR\windows -Recurse -Force -ErrorAction SilentlyContinue
+          Get-ChildItem -Path $env:ARTIFACT_DIR\windows -Recurse | Select-Object FullName,Length
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe-msi
+          path: ${{ env.ARTIFACT_DIR }}/windows/**
+          retention-days: 30
+
+  create_release:
+    name: Create GitHub Release (on tag)
+    needs: [ubuntu_deb_appimage, fedora_rpm, altlinux_rpm, windows_exe_msi]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            downloaded-artifacts/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
