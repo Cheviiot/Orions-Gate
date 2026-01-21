@@ -83,7 +83,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            ruby rpm dpkg-dev xz-utils fakeroot imagemagick || true
+            ruby-full ruby-dev rubygems rpm dpkg-dev xz-utils fakeroot imagemagick build-essential || true
+          # Install fpm so electron-builder can produce RPMs
+          sudo gem install --no-document fpm || true
+
+      - name: Verify fpm installation
+        run: |
+          echo "gem env:"; gem env || true
+          echo "Gem.bindir:"; ruby -rrubygems -e 'puts Gem.bindir' || true
+          echo "which fpm (before):"; command -v fpm || true
+          if ! command -v fpm >/dev/null 2>&1; then
+            sudo gem install --no-document fpm || true
+          fi
+          GEM_BINDIR=$(ruby -rrubygems -e 'require "rubygems"; puts Gem.bindir') || true
+          if [ -n "$GEM_BINDIR" ] && [ -f "$GEM_BINDIR/fpm" ]; then
+            sudo ln -sf "$GEM_BINDIR/fpm" /usr/local/bin/fpm || true
+          fi
+          echo "which fpm (after):"; command -v fpm || true
+          echo "fpm --version:"; fpm --version || true
 
       - name: Package deb, AppImage & RPM
         run: |
@@ -142,13 +159,32 @@ jobs:
             rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick \
             ruby-full ruby-dev rubygems || true
           # Install fpm (used by scripts/build-altlinux.sh)
-          sudo gem install --no-document fpm
-          # Ensure gem bindir is in PATH (create symlink to /usr/local/bin if necessary)
-          GEM_BINDIR=$(ruby -rubygems -e 'require "rubygems"; puts Gem.bindir') || true
-          if [ -n "$GEM_BINDIR" ] && [ -x "$GEM_BINDIR/fpm" ]; then
+          sudo gem install --user-install --no-document fpm || true
+
+      - name: Verify fpm installation
+        run: |
+          set -euo pipefail
+          echo "---- gem environment ----"
+          gem env || true
+          echo "---- ruby Gem.bindir ----"
+          ruby -rrubygems -e 'puts Gem.bindir' || true
+          echo "---- which fpm (before) ----"
+          command -v fpm || true
+
+          if ! command -v fpm >/dev/null 2>&1; then
+            echo "fpm not found in PATH — attempting sudo gem install again and creating symlink"
+            sudo gem install --no-document fpm || true
+          fi
+
+          GEM_BINDIR=$(ruby -rrubygems -e 'require "rubygems"; puts Gem.bindir') || true
+          if [ -n "$GEM_BINDIR" ] && [ -f "$GEM_BINDIR/fpm" ]; then
+            echo "Found fpm at $GEM_BINDIR/fpm — symlinking to /usr/local/bin"
             sudo ln -sf "$GEM_BINDIR/fpm" /usr/local/bin/fpm || true
           fi
-          echo "which fpm: $(command -v fpm || true)"
+
+          echo "---- which fpm (after) ----"
+          command -v fpm || true
+          echo "---- fpm --version ----"
           fpm --version || true
 
       - name: Locate .spec file
