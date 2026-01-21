@@ -17,9 +17,11 @@ jobs:
   ubuntu_deb_appimage:
     name: Ubuntu - deb & AppImage
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -62,9 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: fedora:latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -100,9 +104,11 @@ jobs:
   altlinux_rpm:
     name: AltLinux P11 - RPM (use existing script)
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -167,10 +173,10 @@ jobs:
         if: steps.findspec.outputs.spec == ''
         run: |
           set -euo pipefail
-          useradd -m builder || true
-          chown -R builder:builder $PWD || true
-          printf "builder ALL=(ALL) NOPASSWD: ALL\n" > /etc/sudoers.d/builder
-          chmod 0440 /etc/sudoers.d/builder
+          sudo useradd -m builder || true
+          sudo chown -R builder:builder $PWD || true
+          echo "builder ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/builder > /dev/null
+          sudo chmod 0440 /etc/sudoers.d/builder
           sudo -u builder bash -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build'
           sudo -u builder bash -lc 'bash scripts/build-altlinux.sh'
 
@@ -191,9 +197,11 @@ jobs:
   windows_exe_msi:
     name: Windows - exe & msi
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
