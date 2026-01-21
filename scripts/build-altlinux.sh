@@ -99,7 +99,8 @@ EOF
 
 # Create CLI wrapper to place in /usr/bin
 echo '#!/bin/sh' > "${BUILD_DIR}/orions-gate.sh"
-echo 'exec /opt/orions-gate/Orions-Gate --no-sandbox "$@"' >> "${BUILD_DIR}/orions-gate.sh"
+# Execute the packaged linux executable (lowercase `orions-gate` as produced by electron-builder)
+echo 'exec /opt/orions-gate/orions-gate --no-sandbox "$@"' >> "${BUILD_DIR}/orions-gate.sh"
 chmod +x "${BUILD_DIR}/orions-gate.sh"
 
 # Create RPM with proper installation paths and all files
