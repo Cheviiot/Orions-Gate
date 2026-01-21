@@ -41,7 +41,7 @@ jobs:
 
           docker pull alt:p11
 
-          docker run --rm \
+          docker run --rm -i \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
             -e SPEC_INPUT="${SPEC_INPUT:-}" \
