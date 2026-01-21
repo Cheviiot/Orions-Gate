@@ -113,7 +113,7 @@ jobs:
 
               apt-get update
               # База + node/npm (если проект требует) + типовые утилиты
-              apt-get install -y --no-install-recommends \
+              apt-get install -y \
                 rpm rpm-build \
                 git tar gzip xz \
                 make gcc gcc-c++ \
