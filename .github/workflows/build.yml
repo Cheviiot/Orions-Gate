@@ -21,7 +21,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -145,7 +145,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -153,13 +153,37 @@ jobs:
           node-version: '20'
 
       - name: Install packaging tools
+        shell: bash
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick \
-            ruby-full ruby-dev rubygems || true
-          # Install fpm (used by scripts/build-altlinux.sh)
-          sudo gem install --user-install --no-document fpm || true
+            ruby-full ruby-dev rubygems rpm-build || true
+
+      - name: Install fpm (user gem) and add to PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Install fpm into the user's gem directory to avoid requiring sudo
+          gem install --user-install --no-document fpm || true
+
+          # Determine the user gem bin directory and add it to PATH for subsequent steps
+          GEM_USER_BIN=$(ruby -e 'require "rubygems"; print File.join(Gem.user_dir, "bin")')
+          echo "GEM_USER_BIN=$GEM_USER_BIN"
+          echo "$GEM_USER_BIN" >> "$GITHUB_PATH"
+
+          # If fpm is still not on PATH, try to symlink the system gem bindir fpm into /usr/local/bin
+          if ! command -v fpm >/dev/null 2>&1; then
+            GEM_BINDIR=$(ruby -rrubygems -e 'puts Gem.bindir' || true)
+            if [ -n "$GEM_BINDIR" ] && [ -f "$GEM_BINDIR/fpm" ]; then
+              sudo ln -sf "$GEM_BINDIR/fpm" /usr/local/bin/fpm || true
+            fi
+          fi
+
+          echo "which fpm: $(command -v fpm || true)"
+          fpm --version || true
 
       - name: Verify fpm installation
         run: |
@@ -286,7 +310,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
