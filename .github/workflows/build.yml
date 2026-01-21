@@ -11,6 +11,8 @@ jobs:
   linux:
     name: Linux (deb + AppImage)
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: fedora:latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +68,8 @@ jobs:
             rpm-build rpmdevtools rpmlint \
             gcc-c++ make python3 \
             libX11-devel libXext-devel libxkbfile-devel \
-            ImageMagick git glibc-devel ruby-libs
+            ImageMagick git glibc-devel ruby-libs \
+            libxcrypt-compat
 
       - name: Install project dependencies
         run: npm install
@@ -189,6 +194,8 @@ jobs:
   windows:
     name: Windows (NSIS + MSI)
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -222,6 +229,8 @@ jobs:
     container:
       image: docker.io/alt:sisyphus
       options: --user root
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - name: Install compatibility libraries
         run: |
@@ -233,6 +242,8 @@ jobs:
       - name: Install build tools
         run: |
           apt-get install -y \
+            glibc glibc-pthread glibc-core \
+            libcrypt1 \
             curl ca-certificates git \
             rpm-build hasher gear rpmlint \
             make gcc-c++ \
