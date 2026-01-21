@@ -1,63 +1,102 @@
 # Orion's Gate
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-2.0.0--alpha.0-orange.svg) ![Electron](https://img.shields.io/badge/Electron-40-47848F.svg) ![Node](https://img.shields.io/badge/Node-%3E%3D18-43853d.svg) ![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux-5865F2.svg)
+![Orion's Gate Banner](https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/assets/banner.png)
 
-Русскоязычное настольное приложение для YouTube на Electron с интегрированным голосовым переводом (VOT) и обходом DPI через Demergi.
+> **Современный клиент YouTube для Linux/Windows: обход DPI, блокировка рекламы, приватность, красивый оверлей-интерфейс.**
 
-[English version](README.md)
+---
+
 
 ## ✨ Возможности
-- VOT (Voice Over Translation) с GM-API shim и постоянным хранилищем
-- Блокировщик рекламы Ghostery и обход DPI (Demergi)
-- React 18 + Vite + TypeScript, Tailwind, Zustand
-- Полная песочница webview и строгая CSP
-- Сборка под Windows (NSIS/MSI) и Linux (DEB/RPM/AppImage)
+
+- **VOT (Voice Over Translation)** — автоматический перевод озвучки YouTube (интеграция userscript VOT)
+- **Обход DPI** (Demergi встроен, опционально)
+- **Блокировка рекламы** (Ghostery, косметические фильтры)
+- **Современный UI** (React + Tailwind)
+- **Мультиязычность**: русский, английский, немецкий, французский
+- **Темы**: YouTube тёмная/светлая, авто
+- **Горячие клавиши**: Alt+←/→, Ctrl+K, Ctrl+,
+- **Портативность**: AppImage, RPM, DEB, NSIS
+
+---
 
 ## 🚀 Быстрый старт
 
-### Требования
-- Node.js 18+ (проверено на 20)
-- npm 10+
-- Git
-
-### Установка и разработка
 ```bash
-git clone https://github.com/Cheviiot/Orions-Gate.git
-cd Orions-Gate
+# 1. Установите зависимости
 npm install
+
+# 2. Запуск в режиме разработки
 npm run dev
-```
 
-### Сборка и упаковка
-```bash
+# 3. Сборка релиза
 npm run build
-npm run make:win      # NSIS (Windows)
-npm run make:deb      # DEB (Debian/Ubuntu)
-npm run make:rpm      # RPM (Fedora/RHEL/Alt)
-npm run make:appimage # AppImage (универсальный)
+
+# 4. Запуск собранного приложения
+npm start
 ```
 
-Артефакты: release/
+---
 
-### Поддержка Alt Linux (Wayland и X11)
-- PNG иконки 16–512 px (hicolor theme)
-- Высокое DPI и автоподбор иконок
-- Совместимость с GNOME/KDE/XFCE и др.
+## 🛠️ Сборка установщиков
 
-## Структура проекта
-```
-.
-├── src/
-│   ├── main/             # Главный процесс Electron
-│   │   ├── index.ts      # Окна и жизненный цикл
-│   │   ├── settings.ts   # Настройки + миграция
-│   │   ├── dpiManager.ts # Управление Demergi
-│   │   ├── votBridge.ts  # 8 IPC обработчиков VOT
-│   │   └── votStorage.ts # Обёртка electron-store
-│   ├── preload/          # Preload мосты
-│   │   ├── index.ts      # window.orion API
-│   │   └── webview.ts    # VOT инжект + GM-API shim
-│   ├── renderer/         # React UI
+- **Windows (NSIS):**
+    ```bash
+    npm run make:win
+    ```
+- **Linux (DEB):**
+    ```bash
+    npm run make:deb
+    ```
+- **Linux (RPM):**
+    ```bash
+    npm run make:rpm
+    ```
+- **Linux (AppImage):**
+    ```bash
+    npm run make:appimage
+    ```
+- **ALT Linux (нативный RPM):**
+    ```bash
+    bash scripts/build-altlinux.sh
+    ```
+
+Артефакты появляются в папке `release/`.
+
+---
+
+## 🌐 Локализация
+
+- Интерфейс: русский, английский, немецкий, французский
+- Добавить перевод: `src/renderer/locales/<lang>/translation.json`
+
+---
+
+## 🧩 Технологии
+
+- **Electron 40+**
+- **React 18 + TypeScript 5**
+- **Vite, TailwindCSS, Zustand, i18next**
+- **Ghostery Adblocker**
+- **Demergi DPI bypass**
+
+---
+
+## 🤝 Вклад и поддержка
+
+Пулл-реквесты и багрепорты приветствуются! Подробнее — в [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## 📄 Лицензия
+
+MIT. См. [LICENSE](LICENSE).
+
+---
+
+<p align="center">
+    <img src="https://raw.githubusercontent.com/Cheviiot/Orions-Gate/main/assets/vot/vot.user.js.png" width="400" alt="Orion's Gate Screenshot"/>
+</p>
 │   │   ├── components/   # FAB, Settings, Search
 │   │   ├── state/        # Zustand сторы
 │   │   ├── locales/      # i18n (en, ru)

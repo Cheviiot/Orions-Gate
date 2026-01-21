@@ -354,32 +354,32 @@ const SettingsOverlay = ({ onClose }: Props) => {
           {/* 3. Adblocker */}
           <section className="rounded-xl border p-5" style={{ borderColor: 'var(--yt-border)', background: 'var(--yt-surface-2)' }}>
             <div className="mb-3">
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--yt-text)' }}>Adblocker</h3>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--yt-text)' }}>{t('overlay.settings.adblock.title')}</h3>
               <p className="text-sm" style={{ color: 'var(--yt-text-secondary)' }}>
-                Блокировка рекламы и трекеров, косметические фильтры.
+                {t('overlay.settings.adblock.description')}
               </p>
             </div>
             <div className="space-y-4">
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--yt-text)' }}>
                 <input type="checkbox" checked={draft.adblock.enabled} onChange={(e) => updateAdblock({ enabled: e.target.checked })} />
-                Включить Adblocker
+                {t('overlay.settings.adblock.enable')}
               </label>
               <div className="grid gap-1">
-                <label className="text-sm font-semibold" style={{ color: 'var(--yt-text-secondary)' }}>Сила блокировки</label>
+                <label className="text-sm font-semibold" style={{ color: 'var(--yt-text-secondary)' }}>{t('overlay.settings.adblock.strength')}</label>
                 <select
                   value={draft.adblock.strength}
                   onChange={(e) => updateAdblock({ strength: e.target.value as any })}
                   className="w-full h-10 rounded-lg border bg-[var(--yt-surface-3)] px-3 text-sm"
                   style={{ borderColor: 'var(--yt-border)', color: 'var(--yt-text)' }}
                 >
-                  <option value="ads">Только реклама</option>
-                  <option value="ads-and-tracking">Реклама + трекеры</option>
-                  <option value="full">Полные списки</option>
+                  <option value="off">{t('overlay.settings.adblock.strengthOptions.off')}</option>
+                  <option value="basic">{t('overlay.settings.adblock.strengthOptions.basic')}</option>
+                  <option value="full">{t('overlay.settings.adblock.strengthOptions.full')}</option>
                 </select>
               </div>
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--yt-text)' }}>
                 <input type="checkbox" checked={draft.adblock.cosmetics} onChange={(e) => updateAdblock({ cosmetics: e.target.checked })} />
-                Косметические фильтры (скрытие элементов)
+                {t('overlay.settings.adblock.cosmetics')} (скрытие элементов)
               </label>
 
               <AdblockStatsPanel />
@@ -405,6 +405,8 @@ const SettingsOverlay = ({ onClose }: Props) => {
                 >
                   <option value="en">{t('overlay.settings.interface.languageOptions.en')}</option>
                   <option value="ru">{t('overlay.settings.interface.languageOptions.ru')}</option>
+                  <option value="de">{t('overlay.settings.interface.languageOptions.de')}</option>
+                  <option value="fr">{t('overlay.settings.interface.languageOptions.fr')}</option>
                 </select>
 
                 <label className="text-sm font-semibold" style={{ color: 'var(--yt-text-secondary)' }}>{t('overlay.settings.interface.theme')}</label>
@@ -733,39 +735,37 @@ const SettingsOverlay = ({ onClose }: Props) => {
 
           {/* 7. DevTools */}
           <section className="rounded-xl border p-5" style={{ borderColor: 'var(--yt-border)', background: 'var(--yt-surface-2)' }}>
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold" style={{ color: 'var(--yt-text)' }}>DevTools</h3>
-                <p className="text-sm" style={{ color: 'var(--yt-text-secondary)' }}>
-                  Открывайте инструменты разработчика вручную при необходимости.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.orion.devtools.openMain()}
-                  className="rounded px-3 py-2 text-sm"
-                  style={{
-                    background: 'var(--yt-surface-3)',
-                    color: 'var(--yt-text)',
-                    border: '1px solid var(--yt-border)'
-                  }}
-                >
-                  DevTools окна
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.orion.devtools.openWebview()}
-                  className="rounded px-3 py-2 text-sm"
-                  style={{
-                    background: 'var(--yt-accent)',
-                    color: '#fff',
-                    border: '1px solid transparent'
-                  }}
-                >
-                  DevTools YouTube
-                </button>
-              </div>
+            <div className="mb-3">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--yt-text)' }}>{t('overlay.settings.devtools.title')}</h3>
+              <p className="text-sm" style={{ color: 'var(--yt-text-secondary)' }}>
+                {t('overlay.settings.devtools.description')}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => window.orion.devtools.openMain()}
+                className="rounded px-3 py-2 text-sm"
+                style={{
+                  background: 'var(--yt-surface-3)',
+                  color: 'var(--yt-text)',
+                  border: '1px solid var(--yt-border)'
+                }}
+              >
+                {t('overlay.settings.devtools.mainWindow')}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.orion.devtools.openWebview()}
+                className="rounded px-3 py-2 text-sm"
+                style={{
+                  background: 'var(--yt-accent)',
+                  color: '#fff',
+                  border: '1px solid transparent'
+                }}
+              >
+                {t('overlay.settings.devtools.youtube')}
+              </button>
             </div>
           </section>
         </div>
@@ -777,6 +777,7 @@ const SettingsOverlay = ({ onClose }: Props) => {
 export default SettingsOverlay;
 
 const AdblockStatsPanel = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<{ blocked: number; redirected: number; whitelisted: number; styles: number; scripts: number; csp: number } | null>(null);
   useEffect(() => {
     const handler = (payload: any) => setStats(payload);
@@ -785,18 +786,18 @@ const AdblockStatsPanel = () => {
   }, []);
   return (
     <div className="rounded-lg border p-3" style={{ borderColor: 'var(--yt-border)', background: 'var(--yt-surface-3)' }}>
-      <p className="text-sm font-semibold mb-2" style={{ color: 'var(--yt-text)' }}>Статистика</p>
+      <p className="text-sm font-semibold mb-2" style={{ color: 'var(--yt-text)' }}>{t('overlay.settings.adblock.stats.title')}</p>
       {stats ? (
         <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: 'var(--yt-text-secondary)' }}>
-          <div>Заблокировано: {stats.blocked}</div>
-          <div>Редиректы: {stats.redirected}</div>
-          <div>Белый список: {stats.whitelisted}</div>
-          <div>CSS инъекции: {stats.styles}</div>
-          <div>JS инъекции: {stats.scripts}</div>
-          <div>CSP: {stats.csp}</div>
+          <div>{t('overlay.settings.adblock.stats.blocked')}: {stats.blocked}</div>
+          <div>{t('overlay.settings.adblock.stats.redirected')}: {stats.redirected}</div>
+          <div>{t('overlay.settings.adblock.stats.whitelisted')}: {stats.whitelisted}</div>
+          <div>{t('overlay.settings.adblock.stats.styles')}: {stats.styles}</div>
+          <div>{t('overlay.settings.adblock.stats.scripts')}: {stats.scripts}</div>
+          <div>{t('overlay.settings.adblock.stats.csp')}: {stats.csp}</div>
         </div>
       ) : (
-        <div className="text-xs" style={{ color: 'var(--yt-text-secondary)' }}>Нет данных</div>
+        <div className="text-xs" style={{ color: 'var(--yt-text-secondary)' }}>{t('overlay.settings.adblock.stats.noData')}</div>
       )}
     </div>
   );

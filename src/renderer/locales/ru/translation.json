@@ -3,7 +3,7 @@
     "title": "Orion's Gate",
     "platform": "Платформа",
     "ping": "Пинг",
-    "webview": "Webview",
+    "webview": "Webview (Вебпросмотр)",
     "nav": {
       "home": "Главная",
       "settings": "Настройки",
@@ -78,8 +78,10 @@
         "description": "Тема, масштаб, фон, горячие клавиши",
         "language": "Язык",
         "languageOptions": {
-          "en": "English",
-          "ru": "Русский"
+          "en": "Английский",
+          "ru": "Русский",
+          "de": "Немецкий",
+          "fr": "Французский"
         },
         "theme": "Тема",
         "themeOptions": {
@@ -104,6 +106,34 @@
         "description": "Управление пользовательскими скриптами для сайтов",
         "openManager": "Открыть менеджер скриптов",
         "note": "Вы также можете открыть это через Tools → Orion Userscripts…"
+      },
+      "adblock": {
+        "title": "Блокировка рекламы",
+        "description": "Блокировка рекламы и трекеров, косметические фильтры",
+        "enable": "Включить Adblocker",
+        "strength": "Сила блокировки",
+        "strengthOptions": {
+          "off": "Выкл",
+          "basic": "Базовая",
+          "full": "Полная"
+        },
+        "cosmetics": "Косметические фильтры",
+        "stats": {
+          "title": "Статистика",
+          "blocked": "Заблокировано",
+          "redirected": "Редиректы",
+          "whitelisted": "Белый список",
+          "styles": "CSS инъекции",
+          "scripts": "JS инъекции",
+          "csp": "CSP",
+          "noData": "Нет данных"
+        }
+      },
+      "devtools": {
+        "title": "Инструменты разработчика",
+        "description": "Открывайте инструменты разработчика вручную при необходимости",
+        "mainWindow": "DevTools окна",
+        "youtube": "DevTools YouTube"
       },
       "fab": {
         "title": "Кнопки действий",

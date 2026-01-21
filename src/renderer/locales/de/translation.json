@@ -1,0 +1,193 @@
+{
+  "app": {
+    "title": "Orion's Gate",
+    "platform": "Plattform",
+    "ping": "Ping",
+    "webview": "Webview",
+    "nav": {
+      "home": "Startseite",
+      "settings": "Einstellungen",
+      "diagnostics": "Diagnose"
+    }
+  },
+  "overlay": {
+    "actions": {
+      "home": "Startseite",
+      "back": "Zurück",
+      "forward": "Weiter",
+      "search": "Suche",
+      "settings": "Einstellungen",
+      "refresh": "Aktualisieren"
+    },
+    "search": {
+      "placeholder": "YouTube durchsuchen",
+      "hint": "Enter zum Suchen, Esc zum Schließen"
+    },
+    "settings": {
+      "title": "Einstellungen",
+      "language": "Sprache",
+      "theme": "Theme",
+      "scale": "UI-Skalierung",
+      "hint": "Sprache und Oberfläche konfigurieren",
+      "window": {
+        "title": "Fenster",
+        "description": "Breite, Zustand, immer im Vordergrund",
+        "width": "Breite",
+        "widthCustom": "Benutzerdefiniert",
+        "startState": "Startzustand",
+        "startStateOptions": {
+          "last": "Letzter",
+          "maximized": "Maximiert",
+          "normal": "Normal"
+        },
+        "alwaysOnTop": "Immer im Vordergrund",
+        "resizable": "Größenänderbar",
+        "minWidth": "Min. Breite",
+        "minHeight": "Min. Höhe"
+      },
+      "userAgent": {
+        "title": "User-Agent",
+        "description": "Standard empfohlen; Benutzerdefiniert erfordert Neustart",
+        "mode": "Modus",
+        "modeOptions": {
+          "default": "Standard (empfohlen)",
+          "chromeDesktop": "Chrome Desktop",
+          "chromeAndroid": "Chrome Android",
+          "custom": "Benutzerdefiniert"
+        },
+        "customPlaceholder": "Benutzerdefinierten UA eingeben",
+        "reloadOnChange": "Nach UA-Änderung neu laden"
+      },
+      "dpi": {
+        "title": "DPI-Umgehung",
+        "description": "Eingebauter Demergi-Proxy zur DPI-Umgehung (nur App + Webview)",
+        "mode": "Modus",
+        "modeOptions": {
+          "off": "Aus",
+          "demergi": "Demergi (integriert)"
+        },
+        "host": "Proxy-Host",
+        "port": "Proxy-Port",
+        "bypass": "Bypass-Liste",
+        "args": "Zusätzliche Argumente (Demergi)",
+        "autoStart": "Gebündelten Demergi automatisch starten",
+        "hint": "Mit Semikolon trennen; Hosts auslassen, die nicht proxied werden sollen"
+      },
+      "interface": {
+        "title": "Oberfläche",
+        "description": "Theme, Skalierung, Hintergründe, Hotkeys",
+        "language": "Sprache",
+        "languageOptions": {
+          "en": "Englisch",
+          "ru": "Russisch",
+          "de": "Deutsch",
+          "fr": "Französisch"
+        },
+        "theme": "Theme",
+        "themeOptions": {
+          "ytDark": "YouTube Dunkel",
+          "ytLight": "YouTube Hell",
+          "auto": "Auto (System)"
+        },
+        "scale": "Skalierung",
+        "scalePercent": "{percent}%",
+        "backdropOpacity": "Hintergrund-Deckkraft",
+        "animations": "Animationen",
+        "hotkeys": "Hotkeys (Alt+←/→, Ctrl+K, Ctrl+,)",
+        "autoCloseOnNav": "Panel bei Navigation schließen",
+        "closeOnEsc": "Mit Esc schließen",
+        "closeOnOutside": "Bei Klick außerhalb schließen",
+        "iconSet": "Icon-Stil",
+        "iconSetLucide": "Lucide (Standard)",
+        "iconSetMaterial": "Material Symbols"
+      },
+      "userscripts": {
+        "title": "Orion Userscripts",
+        "description": "Eigene Userscripts für Websites verwalten",
+        "openManager": "Userscripts-Manager öffnen",
+        "note": "Auch erreichbar über Tools → Orion Userscripts…"
+      },
+      "adblock": {
+        "title": "Werbeblocker",
+        "description": "Werbung und Tracker blockieren, kosmetische Filter",
+        "enable": "Werbeblocker aktivieren",
+        "strength": "Blockierstärke",
+        "strengthOptions": {
+          "off": "Aus",
+          "basic": "Einfach",
+          "full": "Voll"
+        },
+        "cosmetics": "Kosmetische Filter",
+        "stats": {
+          "title": "Statistik",
+          "blocked": "Blockiert",
+          "redirected": "Weiterleitungen",
+          "whitelisted": "Whitelist",
+          "styles": "CSS-Injektionen",
+          "scripts": "JS-Injektionen",
+          "csp": "CSP",
+          "noData": "Keine Daten"
+        }
+      },
+      "devtools": {
+        "title": "Entwicklerwerkzeuge",
+        "description": "Entwicklerwerkzeuge bei Bedarf manuell öffnen",
+        "mainWindow": "DevTools Fenster",
+        "youtube": "DevTools YouTube"
+      },
+      "fab": {
+        "title": "Aktionsschaltflächen",
+        "description": "Position, Größe, Reihenfolge, Verhalten",
+        "position": "Position",
+        "positionOptions": {
+          "rightBottom": "Rechts unten",
+          "leftBottom": "Links unten"
+        },
+        "padding": "Abstand",
+        "size": "Größe",
+        "sizeOptions": {
+          "s": "S",
+          "m": "M",
+          "l": "L"
+        },
+        "opacity": "Deckkraft",
+        "opacityPercent": "{percent}%",
+        "style": "Stil",
+        "styleOptions": {
+          "circle": "Rund",
+          "rounded": "Abgerundetes Quadrat"
+        },
+        "hoverOpen": "Panel bei Hover öffnen",
+        "closeOnVideoClick": "Panel beim Klick auf Video schließen",
+        "tooltips": "Tooltips",
+        "buttonOrder": "Reihenfolge der Schaltflächen"
+      }
+    },
+    "diagnostics": {
+      "title": "Diagnose",
+      "hint": "Zum Inspizieren bewegen.",
+      "size": "{w}×{h} @ {x},{y}",
+      "z": "z-index: {value}"
+    }
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "add": "Hinzufügen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "import": "Importieren",
+    "export": "Exportieren",
+    "install": "Installieren",
+    "uninstall": "Deinstallieren",
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg",
+    "warning": "Warnung",
+    "url": "URL",
+    "name": "Name",
+    "version": "Version"
+  }
+}

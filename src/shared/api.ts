@@ -15,9 +15,6 @@ export type OrionBridge = {
     get: () => Promise<Settings>;
     set: (partial: Partial<Settings>) => Promise<Settings>;
   };
-  userscripts: {
-    openSettings: () => Promise<boolean>;
-  };
   devtools: {
     openMain: () => Promise<boolean>;
     openWebview: () => Promise<boolean>;

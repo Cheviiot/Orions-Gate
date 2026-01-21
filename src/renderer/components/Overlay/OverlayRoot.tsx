@@ -32,7 +32,7 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
   const { settings } = useSettings();
   const fabRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const pad = clamp(settings.fab.padding, 8, 32);
+  const pad = clamp(settings.fab?.padding ?? 24, 8, 32);
 
   const handleHome = async () => {
     await window.orion.navigation.home();
@@ -73,13 +73,13 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
   };
 
   useEffect(() => {
-    if (!settings.ui.hotkeys) return;
+    if (!settings.ui?.hotkeys) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === 'D') {
         e.preventDefault();
         toggleDiagnostics();
       }
-      if (settings.ui.hotkeys) {
+      if (settings.ui?.hotkeys) {
         if (e.altKey && e.key === 'ArrowLeft') {
           e.preventDefault();
           void handleBack();
@@ -98,7 +98,7 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
         }
       }
 
-      if (settings.ui.closeOnEsc && e.key === 'Escape') {
+      if (settings.ui?.closeOnEsc && e.key === 'Escape') {
         if (isSearchOpen) {
           closeSearch();
           focusFab();
@@ -127,7 +127,7 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
 
   const lastStatus = useRef<string | null>(null);
   useEffect(() => {
-    if (!settings.ui.autoCloseOnNav) return;
+    if (!settings.ui?.autoCloseOnNav) return;
     if (!isPanelOpen) {
       lastStatus.current = webviewStatus;
       return;
@@ -136,13 +136,13 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
       closePanel();
     }
     lastStatus.current = webviewStatus;
-  }, [settings.ui.autoCloseOnNav, isPanelOpen, webviewStatus, closePanel]);
+  }, [settings.ui?.autoCloseOnNav, isPanelOpen, webviewStatus, closePanel]);
 
   return createPortal(
     <>
       <div className="pointer-events-none fixed inset-0 z-[2147483000]">
         {diagnosticsMode && <DiagnosticsLayer />}
-        {isPanelOpen && settings.ui.closeOnOutside && (
+        {isPanelOpen && settings.ui?.closeOnOutside && (
           <button
             className="pointer-events-auto fixed inset-0 bg-transparent"
             aria-label="Close overlay"
@@ -156,8 +156,8 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
           className="absolute flex flex-col items-end gap-3"
           style={{
             bottom: `calc(${pad}px + env(safe-area-inset-bottom, 0px))`,
-            [settings.fab.position === 'right-bottom' ? 'right' : 'left']:
-              `calc(${pad}px + env(${settings.fab.position === 'right-bottom' ? 'safe-area-inset-right' : 'safe-area-inset-left'}, 0px))`
+            [settings.fab?.position === 'right-bottom' ? 'right' : 'left']:
+              `calc(${pad}px + env(${settings.fab?.position === 'right-bottom' ? 'safe-area-inset-right' : 'safe-area-inset-left'}, 0px))`
           } as any}
         >
           {isPanelOpen && (
@@ -169,9 +169,9 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
                 onSearch={handleSearch}
                 onSettings={handleSettings}
                 onRefresh={handleRefresh}
-                order={settings.fab.buttonOrder as any}
-                tooltips={settings.fab.tooltips}
-                fabSize={settings.fab.size}
+                order={settings.fab?.buttonOrder as any}
+                tooltips={settings.fab?.tooltips}
+                fabSize={settings.fab?.size}
               />
             </div>
           )}
@@ -179,11 +179,11 @@ const OverlayRoot = ({ webviewStatus }: Props) => {
             ref={fabRef}
             active={isPanelOpen}
             onClick={togglePanel}
-            onMouseEnter={settings.fab.hoverOpen ? openPanel : undefined}
-            size={settings.fab.size}
-            shape={settings.fab.shape}
-            opacity={settings.fab.opacity}
-            tooltips={settings.fab.tooltips}
+            onMouseEnter={settings.fab?.hoverOpen ? openPanel : undefined}
+            size={settings.fab?.size}
+            shape={settings.fab?.shape}
+            opacity={settings.fab?.opacity}
+            tooltips={settings.fab?.tooltips}
           />
         </div>
       </div>

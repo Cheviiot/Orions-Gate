@@ -22,8 +22,6 @@
     "make:deb": "npm run build && electron-builder --linux deb --config electron-builder.yml",
     "make:rpm": "npm run build && electron-builder --linux rpm --config electron-builder.yml",
     "make:appimage": "npm run build && electron-builder --linux AppImage --config electron-builder.yml",
-    "generate-icons": "node scripts/generate-icons.js",
-    "validate-icons": "node scripts/validate-icons.js",
     "playwright:install": "npx playwright install --with-deps chromium",
     "test:smoke": "npm run build && npx playwright test"
   },

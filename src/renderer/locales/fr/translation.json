@@ -1,0 +1,193 @@
+{
+  "app": {
+    "title": "Orion's Gate",
+    "platform": "Plateforme",
+    "ping": "Ping",
+    "webview": "Webview",
+    "nav": {
+      "home": "Accueil",
+      "settings": "Paramètres",
+      "diagnostics": "Diagnostics"
+    }
+  },
+  "overlay": {
+    "actions": {
+      "home": "Accueil",
+      "back": "Retour",
+      "forward": "Suivant",
+      "search": "Recherche",
+      "settings": "Paramètres",
+      "refresh": "Actualiser"
+    },
+    "search": {
+      "placeholder": "Rechercher sur YouTube",
+      "hint": "Entrée pour rechercher, Esc pour fermer"
+    },
+    "settings": {
+      "title": "Paramètres",
+      "language": "Langue",
+      "theme": "Thème",
+      "scale": "Échelle de l'interface",
+      "hint": "Configurer la langue et l'interface",
+      "window": {
+        "title": "Fenêtre",
+        "description": "Largeur, état, toujours au-dessus",
+        "width": "Largeur",
+        "widthCustom": "Personnalisée",
+        "startState": "État de démarrage",
+        "startStateOptions": {
+          "last": "Dernier",
+          "maximized": "Maximisée",
+          "normal": "Normale"
+        },
+        "alwaysOnTop": "Toujours au-dessus",
+        "resizable": "Redimensionnable",
+        "minWidth": "Largeur min",
+        "minHeight": "Hauteur min"
+      },
+      "userAgent": {
+        "title": "User-Agent",
+        "description": "Par défaut recommandé ; personnalisé nécessite rechargement",
+        "mode": "Mode",
+        "modeOptions": {
+          "default": "Par défaut (recommandé)",
+          "chromeDesktop": "Chrome Bureau",
+          "chromeAndroid": "Chrome Android",
+          "custom": "Personnalisé"
+        },
+        "customPlaceholder": "Saisir UA personnalisé",
+        "reloadOnChange": "Recharger après changement d'UA"
+      },
+      "dpi": {
+        "title": "Contournement DPI",
+        "description": "Proxy Demergi intégré pour contourner le DPI (appli + webview seulement)",
+        "mode": "Mode",
+        "modeOptions": {
+          "off": "Désactivé",
+          "demergi": "Demergi (intégré)"
+        },
+        "host": "Hôte du proxy",
+        "port": "Port du proxy",
+        "bypass": "Liste d'exclusion",
+        "args": "Arguments supplémentaires (Demergi)",
+        "autoStart": "Démarrer Demergi intégré automatiquement",
+        "hint": "Séparés par point-virgule ; ignorer les hôtes à ne pas proxifier"
+      },
+      "interface": {
+        "title": "Interface",
+        "description": "Thème, échelle, arrière-plans, raccourcis",
+        "language": "Langue",
+        "languageOptions": {
+          "en": "Anglais",
+          "ru": "Russe",
+          "de": "Allemand",
+          "fr": "Français"
+        },
+        "theme": "Thème",
+        "themeOptions": {
+          "ytDark": "YouTube Sombre",
+          "ytLight": "YouTube Clair",
+          "auto": "Auto (système)"
+        },
+        "scale": "Échelle",
+        "scalePercent": "{percent}%",
+        "backdropOpacity": "Opacité de l'arrière-plan",
+        "animations": "Animations",
+        "hotkeys": "Raccourcis (Alt+←/→, Ctrl+K, Ctrl+,)",
+        "autoCloseOnNav": "Fermer le panneau lors de la navigation",
+        "closeOnEsc": "Fermer avec Esc",
+        "closeOnOutside": "Fermer en cliquant à l'extérieur",
+        "iconSet": "Style d'icônes",
+        "iconSetLucide": "Lucide (par défaut)",
+        "iconSetMaterial": "Material Symbols"
+      },
+      "userscripts": {
+        "title": "Orion Userscripts",
+        "description": "Gérer des userscripts personnalisés pour les sites",
+        "openManager": "Ouvrir le gestionnaire de userscripts",
+        "note": "Accessible aussi via Outils → Orion Userscripts…"
+      },
+      "adblock": {
+        "title": "Bloqueur de pubs",
+        "description": "Bloquer pubs et traqueurs, filtres cosmétiques",
+        "enable": "Activer le bloqueur",
+        "strength": "Niveau de blocage",
+        "strengthOptions": {
+          "off": "Désactivé",
+          "basic": "Basique",
+          "full": "Complet"
+        },
+        "cosmetics": "Filtres cosmétiques",
+        "stats": {
+          "title": "Statistiques",
+          "blocked": "Bloqués",
+          "redirected": "Redirections",
+          "whitelisted": "Liste blanche",
+          "styles": "Injections CSS",
+          "scripts": "Injections JS",
+          "csp": "CSP",
+          "noData": "Aucune donnée"
+        }
+      },
+      "devtools": {
+        "title": "Outils de développement",
+        "description": "Ouvrir les outils de développement manuellement au besoin",
+        "mainWindow": "DevTools Fenêtre",
+        "youtube": "DevTools YouTube"
+      },
+      "fab": {
+        "title": "Boutons d’action",
+        "description": "Position, taille, ordre, comportement",
+        "position": "Position",
+        "positionOptions": {
+          "rightBottom": "En bas à droite",
+          "leftBottom": "En bas à gauche"
+        },
+        "padding": "Marge intérieure",
+        "size": "Taille",
+        "sizeOptions": {
+          "s": "S",
+          "m": "M",
+          "l": "L"
+        },
+        "opacity": "Opacité",
+        "opacityPercent": "{percent}%",
+        "style": "Style",
+        "styleOptions": {
+          "circle": "Rond",
+          "rounded": "Carré arrondi"
+        },
+        "hoverOpen": "Ouvrir le panneau au survol",
+        "closeOnVideoClick": "Fermer le panneau au clic sur la vidéo",
+        "tooltips": "Infobulles",
+        "buttonOrder": "Ordre des boutons"
+      }
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "hint": "Survoler pour inspecter.",
+      "size": "{w}×{h} @ {x},{y}",
+      "z": "z-index: {value}"
+    }
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "import": "Importer",
+    "export": "Exporter",
+    "install": "Installer",
+    "uninstall": "Désinstaller",
+    "enable": "Activer",
+    "disable": "Désactiver",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "warning": "Avertissement",
+    "url": "URL",
+    "name": "Nom",
+    "version": "Version"
+  }
+}

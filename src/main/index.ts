@@ -73,17 +73,25 @@ type AdblockConfig = { enabled: boolean; strength: AdblockStrength; cosmetics: b
 const adblockStats = { blocked: 0, redirected: 0, whitelisted: 0, styles: 0, scripts: 0, csp: 0 };
 let adblockStatsTimer: NodeJS.Timeout | null = null;
 
-const teardownAdblocker = () => {
+const teardownAdblocker = async () => {
   try {
     if (adblocker) {
-      if (session.defaultSession) {
-        adblocker.disableBlockingInSession(session.defaultSession);
+      try {
+        const ytSession = session.fromPartition('persist:orion-youtube');
+        if (ytSession) {
+          await adblocker.disableBlockingInSession(ytSession);
+        }
+      } catch (err) {
+        // Ignore "not enabled" errors during cleanup
+        if (!err?.message?.includes('not enabled')) {
+          console.warn('[main] Error disabling adblocker in ytSession:', err);
+        }
       }
-      const ytSession = session.fromPartition('persist:orion-youtube');
-      adblocker.disableBlockingInSession(ytSession);
+      adblocker = null;
     }
-  } catch {}
-  adblocker = null;
+  } catch (err) {
+    console.warn('[main] Error during adblocker teardown:', err);
+  }
   if (adblockStatsTimer) {
     clearInterval(adblockStatsTimer);
     adblockStatsTimer = null;
@@ -92,7 +100,7 @@ const teardownAdblocker = () => {
 
 const setupAdblocker = async (cfg: AdblockConfig) => {
   try {
-    teardownAdblocker();
+    await teardownAdblocker();
     if (!cfg.enabled) {
       console.log('[main] Adblocker disabled');
       return;

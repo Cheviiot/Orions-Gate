@@ -25,7 +25,7 @@ win:
     - nsis
   icon: resources/icon.ico
 linux:
-  icon: resources/icon_512x512.png
+  icon: resources/icon_512.png
   category: Utility
   target:
     - deb

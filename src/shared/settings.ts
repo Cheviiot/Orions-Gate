@@ -44,7 +44,7 @@ export const settingsSchema = z.object({
   
   ui: z
     .object({
-      language: z.enum(['en', 'ru']).default('en'),
+      language: z.enum(['en', 'ru', 'de', 'fr']).default('en'),
       theme: z.enum(['yt-dark', 'yt-light', 'auto']).default('yt-dark'),
       scale: z.union([z.literal(0.9), z.literal(1), z.literal(1.1), z.literal(1.25)]).default(1),
       backdropOpacity: z.number().min(0).max(0.4).default(0.2),

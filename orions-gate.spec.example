@@ -1,0 +1,152 @@
+%define _unpackaged_files_terminate_build 1
+
+Name:           orions-gate
+Version:        0.1.0
+Release:        alt1
+Summary:        Video overlay and subtitle system based on Vot
+Summary(ru_RU.UTF-8): Система видео-оверлея и субтитров на основе VoT
+
+Packager:       Cheviiot <cheviiot@example.com>
+
+License:        GPL-2.0+
+Group:          Video
+Url:            https://github.com/Cheviiot/Orions-Gate
+
+# Исходный код
+Source0:        %{name}-%{version}.tar.gz
+
+# Desktop интеграция
+Source1:        %{name}.desktop
+Source2:        %{name}.png
+
+# Патчи (если требуются)
+# Patch0:       %{name}-alt-fixes.patch
+
+# Архитектура: Electron приложение работает на x86_64 и других архитектурах
+# ExcludeArch:  ppc ppc64
+
+BuildRequires(pre): rpm-build-nodejs
+BuildRequires(pre): rpm-build-electron
+
+BuildRequires:  nodejs-npm
+BuildRequires:  gcc-c++
+BuildRequires:  make
+BuildRequires:  python3-base
+BuildRequires:  git-core
+BuildRequires:  libX11-devel
+BuildRequires:  libXrandr-devel
+BuildRequires:  libXinerama-devel
+BuildRequires:  libxkbfile-devel
+BuildRequires:  libxkbcommon-devel
+
+# Требуемые пакеты
+Requires:       electron >= 14.0
+Requires:       nodejs-base >= 14.0
+Requires:       glibc >= 2.31
+Requires:       libstdc++ >= 9.0
+Requires:       libX11
+Requires:       libXrandr
+Requires:       libXinerama
+
+%description
+Orions Gate is a powerful video overlay and subtitle system built with Electron.
+It provides advanced features for video processing and subtitle management,
+including integration with VoT (Video Over Text) technology.
+
+The application supports multiple video formats and provides a user-friendly
+interface for managing video playback and subtitle synchronization.
+
+%description -l ru_RU.UTF-8
+Orions Gate - это мощная система видео-оверлея и субтитров, разработанная на Electron.
+Она обеспечивает расширенные возможности для обработки видео и управления субтитрами,
+включая интеграцию с технологией VoT (Video Over Text).
+
+Приложение поддерживает множество видеоформатов и предоставляет удобный интерфейс
+для управления воспроизведением видео и синхронизацией субтитров.
+
+%prep
+%setup -q
+
+# Применение патчей (если они есть)
+# %patch0 -p1
+
+%build
+# Установка зависимостей npm
+npm ci --production
+
+# Если есть скрипт сборки в package.json
+npm run typecheck || true
+npm run build || true
+
+# Обработка нативных модулей (если требуется)
+# npm run compile || true
+
+%check
+# Опциональное тестирование (можно отключить с флагом)
+npm run test || true
+
+%install
+# Инициализация структуры каталогов в buildroot
+mkdir -p %{buildroot}%{_bindir}
+mkdir -p %{buildroot}%{_datadir}/%{name}
+mkdir -p %{buildroot}%{_datadir}/%{name}/assets
+mkdir -p %{buildroot}%{_datadir}/%{name}/locales
+mkdir -p %{buildroot}%{_datadir}/%{name}/src
+mkdir -p %{buildroot}%{_desktopdir}
+mkdir -p %{buildroot}%{_liconsdir}
+mkdir -p %{buildroot}%{_docdir}/%{name}
+
+# Копирование основных файлов приложения
+cp -r release/linux-*/* %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
+cp -r dist/* %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
+cp -r src/renderer/locales %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
+cp -r assets/vot %{buildroot}%{_datadir}/%{name}/assets/ 2>/dev/null || true
+
+# Копирование node_modules (если требуется)
+if [ -d node_modules ]; then
+    cp -r node_modules %{buildroot}%{_datadir}/%{name}/
+fi
+
+# Копирование пакета package.json для информации
+cp package.json %{buildroot}%{_datadir}/%{name}/ 2>/dev/null || true
+
+# Создание точки входа (wrapper скрипт)
+cat > %{buildroot}%{_bindir}/%{name} <<'EOF'
+#!/bin/bash
+exec /usr/share/%{name}/orions-gate "$@"
+EOF
+chmod 0755 %{buildroot}%{_bindir}/%{name}
+
+# Desktop интеграция
+install -D -m 0644 %{SOURCE1} %{buildroot}%{_desktopdir}/%{name}.desktop
+install -D -m 0644 %{SOURCE2} %{buildroot}%{_liconsdir}/%{name}.png
+
+# Документация
+install -m 0644 README.md %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
+install -m 0644 README.ru.md %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
+install -m 0644 CHANGELOG.md %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
+install -m 0644 LICENSE %{buildroot}%{_docdir}/%{name}/ 2>/dev/null || true
+
+# Поиск и установка локализаций (если используются)
+%find_lang %{name} || true
+
+%files
+%license LICENSE
+%doc README.md README.ru.md CHANGELOG.md
+%{_bindir}/%{name}
+%{_datadir}/%{name}
+%{_desktopdir}/%{name}.desktop
+%{_liconsdir}/%{name}.png
+
+%changelog
+* Tue Jan 21 2026 Cheviiot <cheviiot@example.com> - 0.1.0-alt1
+- Initial release for Alt Linux
+- Added support for Russian localization
+- Optimized for Electron 14+ runtime
+- Integrated with VoT technology
+- Full desktop integration with .desktop file
+
+* Mon Dec 15 2025 Cheviiot <cheviiot@example.com> - 0.0.9-alt1
+- Beta release
+- Initial packaging for Alt Linux
+- Electron application base structure

@@ -41,9 +41,6 @@ jobs:
         run: |
           npm ci
       
-      - name: Generate icons
-        run: npm run generate-icons
-      
       - name: Build and package
         run: ${{ matrix.build-cmd }}
       
@@ -67,34 +64,47 @@ jobs:
           apt-get update
           apt-get install -y \
             curl ca-certificates openssl git \
-            python3 make gcc g++ \
+            make gcc g++ \
             libx11-dev libxext-dev libxkbfile-dev \
             libappindicator3-dev fonts-liberation \
-            xdg-utils imagemagick \
-            rpm-build fakeroot rpmdevtools
+            xdg-utils \
+            rpm-build rpmdevtools rpm-macros-altlinux-base
       
       - name: Install Node.js 20
         run: |
           curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           apt-get install -y nodejs
       
+      - name: Setup RPM build environment
+        run: |
+          rpmdev-setuptree
+          mkdir -p ~/rpmbuild/SPECS ~/rpmbuild/SOURCES
+      
       - name: Install project dependencies
         run: npm ci
-      
-      - name: Generate icons
-        run: npm run generate-icons
       
       - name: Build application
         run: npm run build
       
-      - name: Package RPM
-        run: npx electron-builder --linux rpm --config electron-builder.yml
+      - name: Package RPM using fpm
+        run: |
+          npx fpm -s dir -t rpm \
+            -n orions-gate \
+            -v $(node -p "require('./package.json').version") \
+            --rpm-os linux \
+            --after-install scripts/postinst.sh \
+            --after-remove scripts/postrm.sh \
+            -C release/linux-unpacked \
+            -p release/orions-gate-\${version}-1.x86_64.rpm \
+            --rpm-user electron \
+            --rpm-group electron \
+            opt usr
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: altlinux-rpm-artifacts
-          path: release/**/*
+          path: release/*.rpm
           retention-days: 90
 
   create-release:

@@ -33,9 +33,6 @@ jobs:
           npm install
           npm run playwright:install
 
-      - name: Generate icons
-        run: npm run generate-icons
-
       - name: Build application
         run: npm run build
 
@@ -71,9 +68,6 @@ jobs:
 
       - name: Install project dependencies
         run: npm install
-
-      - name: Generate icons
-        run: npm run generate-icons
 
       - name: Build application
         run: npm run build
@@ -137,7 +131,6 @@ jobs:
 
           %build
           npm ci --legacy-peer-deps || npm install
-          npm run generate-icons
           npm run build
           npx electron-builder --linux rpm --x64
 
@@ -210,9 +203,6 @@ jobs:
           npm install
           npm run playwright:install
 
-      - name: Generate icons
-        run: npm run generate-icons
-
       - name: Build application
         run: npm run build
 
@@ -245,9 +235,9 @@ jobs:
           apt-get install -y \
             curl ca-certificates git \
             rpm-build hasher gear rpmlint \
-            python3 make gcc-c++ \
+            make gcc-c++ \
             libX11-devel libXext-devel libxkbfile-devel \
-            ImageMagick sudo perl elfutils
+            sudo
 
       - name: Install Node.js from Alt Linux repo
         run: |
@@ -262,96 +252,42 @@ jobs:
       - name: Install project dependencies
         run: sudo -u builder npm install
 
-      - name: Generate icons
-        run: sudo -u builder npm run generate-icons
-
       - name: Build application
         run: sudo -u builder npm run build
 
-      - name: Setup RPM build environment
-        run: |
-          sudo -u builder mkdir -p /home/builder/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          echo "%_topdir /home/builder/rpmbuild" | sudo -u builder tee /home/builder/.rpmmacros
-
-      - name: Prepare source package
+      - name: Create RPM package
         run: |
           FULL_VERSION=$(node -p "require('./package.json').version")
-          PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
-          PKG_NAME="orions-gate"
-          sudo -u builder tar czf /home/builder/rpmbuild/SOURCES/${PKG_NAME}-${PKG_VERSION}.tar.gz \
-            --exclude=node_modules --exclude=.git --exclude=release \
-            --transform "s,^,${PKG_NAME}-${PKG_VERSION}/," -C $PWD .
-
-      - name: Create SPEC file
-        run: |
-          FULL_VERSION=$(node -p "require('./package.json').version")
-          # Split version and pre-release suffix
           PKG_VERSION=$(echo "$FULL_VERSION" | sed 's/-.*$//')
           PKG_PRERELEASE=$(echo "$FULL_VERSION" | grep -oP '(?<=-).+' || echo "")
           
-          # Determine release number for Alt Linux
           if [ -z "$PKG_PRERELEASE" ]; then
             PKG_RELEASE="alt1"
           else
-            # Convert pre-release format: "alpha.0" -> "alt0.alpha0"
             PKG_RELEASE="alt0.$(echo "$PKG_PRERELEASE" | tr -d '.-')"
           fi
           
-          cat > /home/builder/rpmbuild/SPECS/orions-gate.spec <<EOF
-          Name:           orions-gate
-          Version:        ${PKG_VERSION}
-          Release:        ${PKG_RELEASE}
-          Summary:        Transparent proxy web browser
-          License:        MIT
-          Group:          Networking/WWW
-          URL:            https://github.com/Cheviiot/Orions-Gate
-          Source0:        %{name}-%{version}.tar.gz
-
-          BuildRequires:  rpm-build
-          BuildRequires:  nodejs >= 20
-          BuildRequires:  gcc-c++
-          BuildRequires:  libX11-devel libXext-devel libxkbfile-devel
-          BuildRequires:  ImageMagick
-
-          %description
-          Orion's Gate - transparent proxy browser with VOT integration.
-
-          %prep
-          %setup -q
-
-          %build
-          npm ci --legacy-peer-deps || npm install
-          npm run generate-icons
-          npm run build
-          npx electron-builder --linux rpm --x64
-
-          %install
-          mkdir -p %{buildroot}/opt/%{name}
-          mkdir -p %{buildroot}%{_bindir}
-          mkdir -p %{buildroot}%{_datadir}/applications
+          # Install fpm for RPM creation
+          sudo apt-get install -y ruby ruby-dev
+          sudo gem install fpm
           
-          cp -r release/linux-unpacked/* %{buildroot}/opt/%{name}/
-          ln -s /opt/%{name}/%{name} %{buildroot}%{_bindir}/%{name}
-          
-          cat > %{buildroot}%{_datadir}/applications/%{name}.desktop <<DESKTOP
-          [Desktop Entry]
-          Name=Orion's Gate
-          Exec=/opt/%{name}/%{name}
-          Type=Application
-          Icon=%{name}
-          Categories=Network;WebBrowser;
-          DESKTOP
+          sudo fpm -s dir -t rpm \
+            -n orions-gate \
+            -v "${PKG_VERSION}" \
+            --rpm-os linux \
+            --rpm-dist alt \
+            --release "${PKG_RELEASE}" \
+            --epoch 1 \
+            -C release/linux-unpacked \
+            -p release/orions-gate-\${version}-\${rpm:release}.x86_64.rpm \
+            opt usr
 
-          %files
-          /opt/%{name}
-          %{_bindir}/%{name}
-          %{_datadir}/applications/%{name}.desktop
-
-          %changelog
-          * $(LANG=C date "+%a %b %d %Y") CI Robot <ci@orionsgate.dev> ${PKG_VERSION}-${PKG_RELEASE}
-          - Automated build (version: ${FULL_VERSION})
-          EOF
-          sudo chown builder:builder /home/builder/rpmbuild/SPECS/orions-gate.spec
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: altlinux-rpm-artifacts
+          path: release/*.rpm
+          retention-days: 30
 
       - name: Build RPM
         run: |

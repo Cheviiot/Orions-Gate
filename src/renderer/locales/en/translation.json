@@ -79,7 +79,9 @@
         "language": "Language",
         "languageOptions": {
           "en": "English",
-          "ru": "Русский"
+          "ru": "Russian",
+          "de": "German",
+          "fr": "French"
         },
         "theme": "Theme",
         "themeOptions": {
@@ -104,6 +106,34 @@
         "description": "Manage custom userscripts for websites",
         "openManager": "Open Userscripts Manager",
         "note": "You can also access this via Tools → Orion Userscripts…"
+      },
+      "adblock": {
+        "title": "Ad Blocker",
+        "description": "Block ads and trackers, cosmetic filters",
+        "enable": "Enable Adblocker",
+        "strength": "Blocking strength",
+        "strengthOptions": {
+          "off": "Off",
+          "basic": "Basic",
+          "full": "Full"
+        },
+        "cosmetics": "Cosmetic filters",
+        "stats": {
+          "title": "Statistics",
+          "blocked": "Blocked",
+          "redirected": "Redirects",
+          "whitelisted": "Whitelisted",
+          "styles": "CSS injections",
+          "scripts": "JS injections",
+          "csp": "CSP",
+          "noData": "No data"
+        }
+      },
+      "devtools": {
+        "title": "Developer Tools",
+        "description": "Open developer tools manually when needed",
+        "mainWindow": "DevTools Window",
+        "youtube": "DevTools YouTube"
       },
       "fab": {
         "title": "Action Buttons",
