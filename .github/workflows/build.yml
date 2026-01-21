@@ -91,8 +91,21 @@ jobs:
         run: |
           mkdir -p $ARTIFACT_DIR/fedora
           npx electron-builder --linux rpm --x64 --config electron-builder.yml || true
+          # try to copy artifacts (may be empty if builder placed them elsewhere)
           cp -v release/*.rpm $ARTIFACT_DIR/fedora/ || true
           ls -lah $ARTIFACT_DIR || true
+
+      - name: Debug - show release and workspace
+        run: |
+          echo "PWD=$(pwd)"
+          echo "Listing workspace root:"
+          ls -lah . || true
+          echo "Listing release/:"
+          ls -lah release || true
+          echo "Find files under release/:"
+          find release -maxdepth 4 -type f -print || true
+          echo "List any rpms in entire workspace:" 
+          find . -type f -name "*.rpm" -print || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -177,8 +190,8 @@ jobs:
           sudo chown -R builder:builder $PWD || true
           echo "builder ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/builder > /dev/null
           sudo chmod 0440 /etc/sudoers.d/builder
-          sudo -u builder bash -lc 'if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build'
-          sudo -u builder bash -lc 'bash scripts/build-altlinux.sh'
+          sudo -u builder bash -lc 'cd "$GITHUB_WORKSPACE" && if [ -f package-lock.json ]; then npm ci; else npm install; fi && npm run build'
+          sudo -u builder bash -lc 'cd "$GITHUB_WORKSPACE" && bash scripts/build-altlinux.sh'
 
       - name: Collect AltLinux RPMs
         run: |
