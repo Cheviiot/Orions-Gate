@@ -42,6 +42,7 @@ jobs:
           docker pull alt:p11
 
           docker run --rm -i \
+          git config --global --add safe.directory /work
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
             -e SPEC_INPUT="${SPEC_INPUT:-}" \
