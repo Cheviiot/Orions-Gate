@@ -14,7 +14,7 @@ env:
   ARTIFACT_DIR: artifacts
 
 jobs:
-  ubuntu_deb_appimage:
+  ubuntu_deb_appimage_rpm:
     name: Ubuntu - deb & AppImage & RPM
     runs-on: ubuntu-latest
     env:
@@ -92,15 +92,27 @@ jobs:
           npm run make:appimage || npx electron-builder --linux AppImage --config electron-builder.yml
           npm run make:rpm || npx electron-builder --linux rpm --x64 --config electron-builder.yml || true
 
+      - name: Debug - show release contents
+        run: |
+          echo "PWD=$(pwd)"
+          echo "Listing release/ (non-recursive):"; ls -lah release || true
+          echo "Listing release/ recursively (first 200 entries):"; find release -type f -print | head -n 200 || true
+          echo "Look for any rpm files:"; find release -type f -name '*.rpm' -print || true
+
       - name: Collect artifacts
         run: |
-          mkdir -p $ARTIFACT_DIR/ubuntu
-          # copy deb, AppImage, rpm into ubuntu artifact dir
-          shopt -s nullglob || true
-          cp -v release/*.{deb,AppImage,rpm} $ARTIFACT_DIR/ubuntu/ 2>/dev/null || true
-          # also copy any installers from release root
-          cp -v release/* $ARTIFACT_DIR/ubuntu/ 2>/dev/null || true
-          ls -lah $ARTIFACT_DIR || true
+          set -euo pipefail
+          ART_DIR="${{ env.ARTIFACT_DIR }}/ubuntu"
+          mkdir -p "$ART_DIR"
+
+          # Copy any rpm, deb, AppImage from release (recursive)
+          find release -type f \( -name '*.rpm' -o -name '*.deb' -o -name '*.AppImage' \) -print0 | xargs -0 -I{} cp -v {} "$ART_DIR/" || true
+
+          # Fallback: copy everything from release root
+          cp -v release/* "$ART_DIR/" 2>/dev/null || true
+
+          echo "Artifacts collected into $ART_DIR:" 
+          ls -lah "$ART_DIR" || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -110,7 +122,7 @@ jobs:
           retention-days: 30
 
   altlinux_rpm:
-    name: AltLinux P11 - RPM (use existing script)
+    name: AltLinux P11 - RPM
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -128,9 +140,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             rpm dpkg-dev rpm2cpio build-essential make gcc g++ git xz-utils tar gzip fakeroot nodejs npm imagemagick \
-            ruby ruby-dev rubygems || true
+            ruby-full ruby-dev rubygems || true
           # Install fpm (used by scripts/build-altlinux.sh)
-          sudo gem install --no-document fpm || true
+          sudo gem install --no-document fpm
+          # Ensure gem bindir is in PATH (create symlink to /usr/local/bin if necessary)
+          GEM_BINDIR=$(ruby -rubygems -e 'require "rubygems"; puts Gem.bindir') || true
+          if [ -n "$GEM_BINDIR" ] && [ -x "$GEM_BINDIR/fpm" ]; then
+            sudo ln -sf "$GEM_BINDIR/fpm" /usr/local/bin/fpm || true
+          fi
+          echo "which fpm: $(command -v fpm || true)"
+          fpm --version || true
 
       - name: Locate .spec file
         id: findspec
@@ -267,7 +286,7 @@ jobs:
 
   create_release:
     name: Create GitHub Release (on tag)
-    needs: [ubuntu_deb_appimage, altlinux_rpm, windows_exe_msi]
+    needs: [ubuntu_deb_appimage_rpm, altlinux_rpm, windows_exe_msi]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
