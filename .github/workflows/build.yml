@@ -151,7 +151,7 @@ jobs:
           ls -lah "$ART_DIR" || true
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu-deb-appimage
           path: ${{ env.ARTIFACT_DIR }}/ubuntu/**
@@ -325,7 +325,7 @@ jobs:
           Get-ChildItem -Path $env:ARTIFACT_DIR\windows -Recurse | Select-Object FullName,Length
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-exe-msi
           path: ${{ env.ARTIFACT_DIR }}/windows/**
@@ -340,7 +340,7 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: downloaded-artifacts
 
