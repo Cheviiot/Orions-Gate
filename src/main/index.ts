@@ -1,8 +1,7 @@
-console.log('[main] === STARTING MAIN PROCESS ===');
-console.log('[main] Node:', process.version, 'Platform:', process.platform);
-
 import path from 'node:path';
 import { app, BrowserWindow, ipcMain, shell, net, session, Menu, webContents, screen } from 'electron';
+import log from 'electron-log';
+import fs from 'node:fs';
 import { ElectronBlocker, fullLists } from '@ghostery/adblocker-electron';
 import fetch from 'cross-fetch';
 import { applyUserAgent, applyWindowSettings, getSettings, initializeSettings, setSettings } from './settings';
@@ -10,10 +9,88 @@ import { stopDpiProcess, ensureDemergi } from './dpiManager';
 import { initVOTBridge } from './votBridge';
 import { EventEmitter } from 'events';
 
+console.log('[main] === STARTING MAIN PROCESS ===', 'Node:', process.version, 'Platform:', process.platform);
 console.log('[main] Imports loaded');
 
 // Increase max listeners to prevent warnings
 EventEmitter.defaultMaxListeners = 20;
+
+// Smart logging behavior:
+// - If process has a controlling TTY (started from console), keep logging to console only.
+// - If started without a console (packaged executable), log to a single file which is overwritten each run.
+const hasConsole = Boolean(process.stdout && process.stdout.isTTY);
+const userData = app.getPath('userData');
+const logsDir = path.join(userData, 'logs');
+const logFile = path.join(logsDir, 'main.log');
+
+// Ensure logs dir exists when we need file logging
+if (!hasConsole) {
+  try {
+    fs.mkdirSync(logsDir, { recursive: true });
+    // Overwrite existing log file on each start
+    if (fs.existsSync(logFile)) {
+      try { fs.unlinkSync(logFile); } catch {}
+    }
+  } catch (err) {
+    // If we cannot create dir, fall back to console-only
+    console.warn('[main] Failed to prepare log directory, falling back to console:', err);
+  }
+}
+
+// Configure transports according to presence of console
+// Use `as any` to avoid strict type mismatches in electron-log typings
+(log.transports.file as any).level = hasConsole ? 'silent' : 'info';
+(log.transports.file as any).maxSize = 5 * 1024 * 1024; // 5 MB
+(log.transports.file as any).file = logFile;
+(log.transports.file as any).format = '{y}-{m}-{d} {h}:{i}:{s} [{level}] {text}';
+(log.transports.console as any).level = hasConsole ? 'info' : 'silent';
+
+if (!hasConsole) log.info('[main] File logger initialized at ' + logFile);
+
+// Mirror console output to file only when running without a console
+const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (_key: any, value: any) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    return value;
+  };
+};
+
+const patchConsole = () => {
+  const methods: Array<keyof Console> = ['log', 'info', 'warn', 'error', 'debug'];
+  const original: Partial<Record<string, Function>> = {};
+  const writeToFile = !hasConsole;
+  methods.forEach((m) => {
+    // store original
+    // @ts-ignore
+    original[m] = console[m].bind(console);
+    // @ts-ignore
+    console[m] = (...args: any[]) => {
+      try {
+        // keep console output
+        original[m] && original[m](...args);
+      } catch {}
+      if (!writeToFile) return;
+      try {
+        const text = args.map((a) => {
+          if (typeof a === 'string') return a;
+          if (a instanceof Error) return a.stack || a.message;
+          try { return JSON.stringify(a, getCircularReplacer()); } catch { return String(a); }
+        }).join(' ');
+        // map console methods to electron-log methods
+        if (m === 'log' || m === 'info') log.info(text);
+        else if (m === 'warn') log.warn(text);
+        else if (m === 'error') log.error(text);
+        else if (m === 'debug') log.debug(text);
+      } catch {}
+    };
+  });
+};
+
+patchConsole();
 
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -27,6 +104,7 @@ const ALLOWED_WEBVIEW_HOSTS = new Set([
 
 let mainWindow: BrowserWindow | null = null;
 let adblocker: ElectronBlocker | null = null;
+let isQuitting = false;
 
 // Quick connectivity check to YouTube (small resource, short timeout)
 const canReachYouTube = (timeoutMs = 5000): Promise<boolean> => {
@@ -82,10 +160,11 @@ const teardownAdblocker = async () => {
           await adblocker.disableBlockingInSession(ytSession);
         }
       } catch (err) {
-        // Ignore "not enabled" errors during cleanup
-        if (!err?.message?.includes('not enabled')) {
-          console.warn('[main] Error disabling adblocker in ytSession:', err);
-        }
+          // Ignore "not enabled" errors during cleanup
+          const _msg = (err as any)?.message;
+          if (!_msg || !_msg.includes('not enabled')) {
+            console.warn('[main] Error disabling adblocker in ytSession:', err);
+          }
       }
       adblocker = null;
     }
@@ -207,6 +286,23 @@ const createMainWindow = () => {
 
   win.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Log when the user closes the window using the window close button
+  win.on('close', (event) => {
+    if (!isQuitting) {
+      console.log('[main] User closed the application via window close button');
+      log.info('[main] User closed the application via window close button');
+      try {
+        if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [info] User closed the application via window close button\n`);
+      } catch {}
+    } else {
+      console.log('[main] Window closing due to application quit');
+      log.info('[main] Window closing due to application quit');
+      try {
+        if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [info] Window closing due to application quit\n`);
+      } catch {}
+    }
   });
 
   win.on('resize', () => {
@@ -386,7 +482,28 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
+  console.log('[main] Application quitting (before-quit)');
+  log.info('[main] Application quitting (before-quit)');
+  try {
+    if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [info] Application quitting (before-quit)\n`);
+  } catch {}
   void stopDpiProcess();
+});
+
+// Handle termination signals (container / system signals)
+process.on('SIGINT', () => {
+  log.info('[main] Received SIGINT, quitting...');
+  try { if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [info] Received SIGINT, quitting...\n`); } catch {}
+  isQuitting = true;
+  try { app.quit(); } catch { process.exit(0); }
+});
+
+process.on('SIGTERM', () => {
+  log.info('[main] Received SIGTERM, quitting...');
+  try { if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [info] Received SIGTERM, quitting...\n`); } catch {}
+  isQuitting = true;
+  try { app.quit(); } catch { process.exit(0); }
 });
 
 ipcMain.handle('ping', async () => 'pong');
@@ -454,10 +571,14 @@ ipcMain.handle('settings:set', async (_event, partial) => {
 // Catch uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.error('[main] Uncaught exception:', err);
+  try { log.error('[main] Uncaught exception:', err); } catch {}
+  try { if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [error] Uncaught exception: ${err && (err.stack || err.message || String(err))}\n`); } catch {}
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('[main] Unhandled rejection:', reason);
+  try { log.error('[main] Unhandled rejection:', reason); } catch {}
+  try { if (!hasConsole) fs.appendFileSync(logFile, `[${new Date().toISOString()}] [error] Unhandled rejection: ${String(reason)}\n`); } catch {}
   process.exit(1);
 });

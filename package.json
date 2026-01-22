@@ -19,6 +19,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo \"TODO: add lint\"",
     "start": "npx electron dist/main.js",
+    "logs": "bash -lc 'tail -n 200 -f ~/.config/orions-gate/logs/main.log'",
+    "logs:auto": "node -e \"const path=require('path'), os=require('os'); console.log(path.join(os.homedir(), '.config', 'orions-gate', 'logs', 'main.log'))\" | xargs -I{} tail -n 200 -f {}",
     "make:win": "npm run build && electron-builder --win nsis --config electron-builder.yml",
     "make:deb": "npm run build && electron-builder --linux deb --config electron-builder.yml",
     "make:rpm": "npm run build && electron-builder --linux rpm --config electron-builder.yml",

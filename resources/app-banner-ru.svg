@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="280" viewBox="0 0 1200 280" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style type="text/css"><![CDATA[
+      .bg { fill: #0b1220; }
+      .card { fill: #0f1724; rx: 12; }
+      .title { font-family: Inter, Arial, Helvetica, sans-serif; font-size: 28px; fill: #ffffff; font-weight: 700; }
+      .subtitle { font-family: Inter, Arial, Helvetica, sans-serif; font-size: 18px; fill: #cbd5e1; }
+    ]]></style>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" width="1200" height="280" />
+
+  <!-- Card to give padding -->
+  <rect class="card" x="24" y="24" width="1152" height="232" rx="12" />
+
+  <!-- App icon (uses local PNG) -->
+  <g transform="translate(56,44)">
+    <rect x="0" y="0" width="192" height="192" rx="24" fill="#ffffff" opacity="0.04" />
+    <image href="resources/icon_1024.png" x="0" y="0" width="192" height="192" preserveAspectRatio="xMidYMid meet" />
+  </g>
+
+  <!-- Text block on the right -->
+  <g transform="translate(272,84)">
+    <text class="title" x="0" y="0">Современный клиент YouTube для Linux/Windows</text>
+    <text class="subtitle" x="0" y="48">Обход DPI, блокировка рекламы, приватность, автоматический перевод озвучки (VOT).</text>
+  </g>
+
+</svg>
