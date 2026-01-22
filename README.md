@@ -1,4 +1,3 @@
-````markdown
 
 # Orion's Gate
 
@@ -7,7 +6,7 @@
 > ⚠️ **Warning — Alpha release**  
 > This is a preview release and may be unstable or contain bugs. Use with caution.
 
-![App banner](resources/app-banner-en.svg)
+![App banner](resources/app-banner-en.png)
 
 > **Modern YouTube client for Linux/Windows: DPI bypass, ad blocking, privacy, automatic voice-over translation (VOT).**
 
