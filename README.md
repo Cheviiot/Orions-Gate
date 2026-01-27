@@ -254,7 +254,7 @@ MIT License — see LICENSE.
 
 ## Thanks
 - [VOT (Voice Over Translation)](https://github.com/ilyhalight/voice-over-translation) — author ilyhalight
-- [Demergi](https://github.com/ValdikSS/demergi) — DPI bypass
+- [Demergi](https://github.com/ValdikSS/demergi](https://github.com/hectorm/demergi) — DPI bypass
 - [Ghostery Adblocker](https://www.ghostery.com/) — Ghostery
 - [Electron](https://www.electronjs.org/), [React](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/)
 
