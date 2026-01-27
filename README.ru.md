@@ -259,7 +259,7 @@ MIT License — см. LICENSE.
 
 ## Благодарности
 - [VOT (Voice Over Translation)](https://github.com/ilyhalight/voice-over-translation) — автор ilyhalight
-- [Demergi](https://github.com/ValdikSS/demergi) — обход DPI
+- [Demergi](https://github.com/hectorm/demergi) — обход DPI
 - [Ghostery Adblocker](https://www.ghostery.com/) — автор Ghostery
 - [Electron](https://www.electronjs.org/), [React](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/)
 
